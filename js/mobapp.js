@@ -6,7 +6,8 @@
    ============================================================ */
 const MOB_DEF_URL = "https://claude.ai/artifact/ANKbBV6iJDKWa4GXA8EqMb";
 let mobAppUrl = () => { try { const s = venteCfg().site || {}; return (s.appUrl || "").trim() || MOB_DEF_URL; } catch (e) { return MOB_DEF_URL; } };
-let mobLink = () => { try { const s = venteCfg().site || {}; return (s.lien || "").trim(); } catch (e) { return ""; } };
+const MOB_SITE = "https://wwrwd5wym8-afk.github.io/Speedcompta/";
+let mobLink = () => { try { const s = venteCfg().site || {}; return (s.lien || "").trim() || MOB_SITE; } catch (e) { return MOB_SITE; } };
 const mobStandalone = () => { try { return window.matchMedia("(display-mode: standalone)").matches || !!window.navigator.standalone; } catch (e) { return false; } };
 const mobOS = () => { const u = navigator.userAgent || ""; return /iPhone|iPad|iPod/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? "ios" : /Android/.test(u) ? "android" : "desk"; };
 const mobNom = () => (CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta";
