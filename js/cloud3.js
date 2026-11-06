@@ -90,6 +90,15 @@ if (window.SC_CLOUD_ON) (function () {
   Object.assign(LICCHG, { clSoc: el => { UI.modal.d[el.dataset.f] = el.value; }, clPl: el => { const M = UI.modal; M.pl = (M.pl || []).filter(x => x !== el.dataset.id); if (el.checked) M.pl.push(el.dataset.id); } });
   Object.assign(LICACT, { clPlace: async () => { const M = UI.modal; const l = licList().find(x => x.id === M.id); if (!l || !(M.pl || []).length) { toast("Cochez la société à placer."); return; }
     toast("Placement de la société chez le client…"); try { const n = await place(l, M.pl); M.pl = []; toast(n ? "Société placée dans l'espace de " + (l.client || "votre client") + "." : "Société introuvable."); render(); } catch (e) { toast("Placement impossible : " + (e.message || e)); } } });
+
+  /* ---------- vitrine : les offres publiées pour l'écran de connexion ---------- */
+  async function pubOffres() { if (!isAdmin() || !Store.db) return; try { const V = venteCfg(); const b = CONFIG.branding || {};
+    const doc = { nom: b.nom || "SpeedCompta", slogan: b.slogan || "", actif: V.actif !== false, essai: V.essai || "", email: V.email || "", tel: V.tel || "", societe: V.societe || "",
+      offres: (V.offres || []).map(o => ({ id: o.id, nom: o.nom, prix: o.prix, periode: o.periode, desc: o.desc || "", inclus: o.inclus || [], top: !!o.top, lien: o.lien || "" })), maj: new Date().toISOString() };
+    const raw = Store.rawDb || Store.db; const ref = raw.doc("public/offres"); const s = await ref.get(); const old = s.exists ? plain(s.data()) : null;
+    if (!old || JSON.stringify(Object.assign({}, old, { maj: 0 })) !== JSON.stringify(Object.assign({}, doc, { maj: 0 }))) await ref.set(doc); } catch (e) { console.warn("offres", e); } }
+  const _save = ADM.save; ADM.save = async function () { const r = await _save.apply(this, arguments); pubOffres(); return r; };
+  (function wait2() { if (!window.__SC_READY) return setTimeout(wait2, 600); setTimeout(pubOffres, 1500); })();
   /* ---------- récupération : sociétés placées dans un espace chiffré par l'ancien système ---------- */
   async function restore() { if (!isAdmin() || !Store.rawDb || typeof eqDerive !== "function") return; const raw = Store.rawDb; const ref = raw.doc("data/users/" + Store.uid + "/espaces");
     let m; try { const s = await ref.get(); if (!s.exists) return; m = plain(s.data()); } catch (e) { return; } const lic = m.lic || {}; const back = []; const me = "data/users/" + Store.uid;

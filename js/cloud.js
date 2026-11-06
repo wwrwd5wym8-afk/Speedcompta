@@ -73,7 +73,8 @@
       ${msg ? `<div class="cl-msg ${ok ? "ok" : ""}">${msg}</div>` : ""}
       <button class="cl-btn" type="submit">${T[1]}</button>
       ${mode === "login" ? `<p class="cl-sub" style="margin-top:12px">Client : saisissez l'e-mail et le <b>code d'accès</b> reçus de votre cabinet.</p>` : ""}<div class="cl-links">${mode === "login" ? `<a data-cl="recover">Mot de passe oublié (cabinet)</a>` : mode === "reset" ? "" : `<a data-cl="login">← Retour à la connexion</a>`}</div>
-    </form></div>`;
+    </form>${mode === "login" ? '<div id="clOffres"></div>' : ""}</div>`;
+    if (mode === "login") offres();
     app.querySelectorAll("[data-cl]").forEach(a => a.addEventListener("click", () => { const e = document.getElementById("clEmail"); if (e) screen._email = e.value; screen(a.dataset.cl); }));
     const f = document.getElementById("clForm"); const first = f.querySelector("input"); if (first && !first.value) setTimeout(() => first.focus(), 50);
     f.addEventListener("submit", async ev => { ev.preventDefault(); const btn = f.querySelector(".cl-btn"); const em = (document.getElementById("clEmail") || {}).value; const pw = (document.getElementById("clPass") || {}).value; const pw2 = (document.getElementById("clPass2") || {}).value;
@@ -94,6 +95,32 @@
         else if (mode === "reset") { await Auth.setPassword(screen._rat, pw); history.replaceState(null, "", location.pathname); screen("login", "Mot de passe modifié : connectez-vous.", true); }
       } catch (e) { screen(mode, errFr(e)); }
     }); }
+
+  /* offres et tarifs, affichés sous la connexion (vitrine publique publiée par l'éditeur) */
+  let OFF = null;
+  async function offres() { const box = () => document.getElementById("clOffres"); try {
+      if (!OFF) { const r = await fetch(URL0 + "/rest/v1/sc_docs?select=data&path=eq." + encodeURIComponent("public/offres"), { headers: { apikey: KEY } }); const j = r.ok ? await r.json() : []; OFF = (j[0] && j[0].data) || { offres: [] }; }
+      const b = box(); if (!b || !OFF.actif || !(OFF.offres || []).length) return;
+      if (!document.getElementById("clOffCss")) { const st = document.createElement("style"); st.id = "clOffCss"; st.textContent = `
+        .cl-wrap{display:flex!important;flex-direction:column;align-items:center;gap:34px}
+        #clOffres{width:min(1040px,100%);animation:clOffIn .6s ease-out both}@keyframes clOffIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+        .clo-h{text-align:center;margin-bottom:18px}.clo-h h2{margin:0;font-size:24px;color:#0F3D3E;letter-spacing:-.3px}.clo-h p{margin:6px 0 0;color:#4A5B5B;font-size:14px}
+        .clo-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+        .clo-c{position:relative;background:#fff;border:1px solid #E3EBEA;border-radius:18px;padding:22px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 8px 24px rgba(15,61,62,.06)}
+        .clo-c.top{border:2px solid #0F3D3E;box-shadow:0 16px 40px rgba(15,61,62,.14)}
+        .clo-b{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#0F3D3E;color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:999px;white-space:nowrap}
+        .clo-n{font-size:12px;font-weight:800;letter-spacing:.08em;color:#4A5B5B;text-transform:uppercase}.clo-p{font-size:34px;font-weight:800;color:#0F3D3E;line-height:1}.clo-p small{font-size:13px;font-weight:500;color:#6B7B7B}
+        .clo-d{font-size:13px;color:#6B7B7B}.clo-c ul{list-style:none;margin:4px 0 6px;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px;color:#1F2D2D;flex:1}.clo-c li::before{content:"✓";color:#13585A;font-weight:800;margin-right:8px}
+        .clo-a{display:block;text-align:center;padding:11px;border-radius:12px;font-weight:700;font-size:14px;text-decoration:none;background:#F2F7F7;color:#0F3D3E;border:1px solid #D8E4E3}.clo-c.top .clo-a{background:#0F3D3E;color:#fff;border-color:#0F3D3E}
+        .clo-f{text-align:center;margin-top:16px;font-size:13px;color:#6B7B7B}.clo-f a{color:#13585A;font-weight:600}`; document.head.appendChild(st); }
+      const e = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const per = p => p === "an" ? "HT / an" : p === "unique" ? "HT, une fois" : "HT / mois";
+      const prix = c => { const v = (Number(c) || 0) / 100; return v.toLocaleString("fr-FR", { maximumFractionDigits: v % 1 ? 2 : 0 }) + " €"; };
+      const act = o => o.lien ? `<a class="clo-a" href="${e(o.lien)}" target="_blank" rel="noopener">Souscrire</a>` : OFF.email ? `<a class="clo-a" href="mailto:${e(OFF.email)}?subject=${encodeURIComponent("Offre " + o.nom + " - " + (OFF.nom || "SpeedCompta"))}&body=${encodeURIComponent("Bonjour,\n\nJe souhaite souscrire à l'offre " + o.nom + ".\n\nNom / société :\nTéléphone :\n\nMerci.")}">Choisir cette offre</a>` : "";
+      b.innerHTML = `<div class="clo-h"><h2>Nos offres</h2><p>Pas encore client ? Choisissez votre formule : nous créons votre espace et vous recevez votre code d'accès.</p></div>
+        <div class="clo-g">${OFF.offres.map(o => `<div class="clo-c ${o.top ? "top" : ""}">${o.top ? '<span class="clo-b">Le plus choisi</span>' : ""}<div class="clo-n">${e(o.nom)}</div><div class="clo-p">${prix(o.prix)} <small>${per(o.periode)}</small></div>${o.desc ? `<div class="clo-d">${e(o.desc)}</div>` : ""}<ul>${(o.inclus || []).map(x => `<li>${e(x)}</li>`).join("")}</ul>${act(o)}</div>`).join("")}</div>
+        ${OFF.email || OFF.tel ? `<div class="clo-f">Une question ? ${OFF.email ? `<a href="mailto:${e(OFF.email)}">${e(OFF.email)}</a>` : ""}${OFF.email && OFF.tel ? " · " : ""}${OFF.tel ? `<a href="tel:${e(OFF.tel)}">${e(OFF.tel)}</a>` : ""}</div>` : ""}`;
+    } catch (x) { } }
 
   /* retour d'un lien e-mail (confirmation ou nouveau mot de passe) */
   function hashSession() { const h = new URLSearchParams((location.hash || "").replace(/^#/, "")); const at = h.get("access_token"); if (!at) return null;
