@@ -21,7 +21,7 @@ if (window.SC_CLOUD_ON) (function () {
   const _wel = welHTML;
   welHTML = function () {
     if (UI._welcome === "preview") { const ico = window.SCLOGO ? SCLOGO.iconURL() : "";
-      return `<div class="wel"><div class="wel-prev">👁 <b>Aperçu</b> : voici ce que voit votre client en ouvrant votre lien. <button class="btn sm" data-act="welBack">⟵ Revenir à l'Espace éditeur</button></div>
+      return `<div class="wel"><div class="wel-prev">👁 <b>Aperçu</b> : voici ce que voit votre client en ouvrant votre lien. <button class="btn sm" data-act="welBack">⟵ Revenir à l'Espace éditeur</button> <button class="btn sm" onclick="SC_INTRO&&SC_INTRO()">▶ Revoir le message de bienvenue</button></div>
       <div class="cl-wrap" style="min-height:auto;padding:24px 0"><div class="cl-card"><div class="cl-brand"><img src="${ico}" alt="" width="56" height="56"><div><b>Speed<i>Compta</i></b><span>Simple · Rapide · Efficace</span></div></div>
       <h1>Connexion</h1><label>Adresse e-mail<input disabled placeholder="email-du-client@exemple.fr"></label><label>Code d'accès ou mot de passe<input disabled placeholder="SC-XXX-XXXX-XXXX"></label>
       <button class="cl-btn" type="button" disabled>Se connecter</button><p class="cl-sub" style="margin-top:12px">Client : saisissez l'e-mail et le <b>code d'accès</b> reçus de votre cabinet.</p></div></div>

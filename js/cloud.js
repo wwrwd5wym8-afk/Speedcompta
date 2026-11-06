@@ -102,11 +102,41 @@
 
   async function me() { const t = await Auth.token(); if (!t) return null; try { const u = await Auth.call("user", null, "GET", t); Auth.s.user = { id: u.id, email: u.email }; Auth.save(Auth.s); return Auth.s.user; } catch (e) { if (e.status === 401 || e.status === 403) Auth.save(null); return null; } }
 
+
+  /* ---------------- message de bienvenue animé avant la connexion ---------------- */
+  function intro() { return new Promise(res => { if (document.getElementById("scIntro")) return res();
+    if (!document.getElementById("scIntroCss")) { const st = document.createElement("style"); st.id = "scIntroCss"; st.textContent = `
+      #scIntro{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 38%,#FFFFFF 0,#F4F7F6 55%,#E8EFEE 100%);transition:opacity .6s ease}
+      #scIntro.out{opacity:0}#scIntro .sc-in{text-align:center;padding:24px;font-family:"Plus Jakarta Sans",system-ui,sans-serif}
+      #scIntro .ic{width:112px;height:112px;margin:0 auto 22px;border-radius:28px;background:#0F3D3E;display:flex;align-items:center;justify-content:center;box-shadow:0 18px 40px -12px rgba(15,61,62,.45);animation:scPop .7s cubic-bezier(.2,1.4,.4,1) both}
+      #scIntro .ic svg{width:80px;height:80px;overflow:visible}
+      #scIntro .arc{stroke-dasharray:190;stroke-dashoffset:190;animation:scDraw 1s .25s ease-out forwards}
+      #scIntro .ndl{transform-origin:48px 48px;animation:scSpin 1.6s .35s cubic-bezier(.3,.1,.2,1) both}
+      #scIntro h1{margin:0;font-size:30px;font-weight:800;color:#0F3D3E;letter-spacing:-.5px;opacity:0;animation:scUp .6s .7s ease-out forwards}
+      #scIntro h1 i{font-style:normal;color:#13585A}#scIntro h1 b{color:#F5B700;font-weight:800}
+      #scIntro p{margin:10px 0 0;color:#4A5B5B;font-size:16px;opacity:0;animation:scUp .6s .95s ease-out forwards}
+      #scIntro .dots{margin-top:26px;display:flex;gap:7px;justify-content:center;opacity:0;animation:scUp .4s 1.2s forwards}
+      #scIntro .dots span{width:8px;height:8px;border-radius:50%;background:#F5B700;animation:scDot 1s infinite ease-in-out}
+      #scIntro .dots span:nth-child(2){animation-delay:.15s;background:#13585A}#scIntro .dots span:nth-child(3){animation-delay:.3s;background:#0F3D3E}
+      @keyframes scPop{from{transform:scale(.4) rotate(-12deg);opacity:0}to{transform:none;opacity:1}}
+      @keyframes scDraw{to{stroke-dashoffset:0}}
+      @keyframes scSpin{0%{transform:rotate(-200deg)}70%{transform:rotate(25deg)}100%{transform:rotate(0)}}
+      @keyframes scUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+      @keyframes scDot{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-6px);opacity:1}}
+      @media (prefers-reduced-motion:reduce){#scIntro *{animation-duration:.01s!important;animation-delay:0s!important}}`; document.head.appendChild(st); }
+    const d = document.createElement("div"); d.id = "scIntro"; d.setAttribute("role", "status");
+    const h = new Date().getHours(); const salut = h >= 18 || h < 5 ? "Bonsoir" : "Bonjour";
+    d.innerHTML = `<div class="sc-in"><div class="ic"><svg viewBox="0 0 96 96" aria-hidden="true"><path class="arc" d="M72 24 A34 34 0 1 0 72 72" fill="none" stroke="#FBF8F2" stroke-width="11" stroke-linecap="round"/><line class="ndl" x1="48" y1="48" x2="71" y2="35" stroke="#F5B700" stroke-width="7" stroke-linecap="round"/><circle cx="48" cy="48" r="7" fill="#FBF8F2"/></svg></div>
+      <h1>${salut}, bienvenue sur <i>Speed</i><b>Compta</b></h1><p>Votre comptabilité en ligne · Simple, rapide, efficace</p><div class="dots"><span></span><span></span><span></span></div></div>`;
+    document.body.appendChild(d); const end = () => { d.classList.add("out"); setTimeout(() => { d.remove(); res(); }, 600); };
+    const t = setTimeout(end, 2600); d.addEventListener("click", () => { clearTimeout(t); end(); }); }); }
+  window.SC_INTRO = intro;
   /* ---------------- branchement sur le démarrage du logiciel ---------------- */
   Store.gate = async function () {
     const hs = hashSession();
     let u = hs === "reset" ? null : await me();
-    if (!u) { await new Promise(res => { screen._done = res; screen(hs === "reset" ? "reset" : "login"); }); u = await me(); }
+    if (!u) { if (hs !== "reset") { const sp = document.getElementById("scSplash"); if (sp) sp.remove(); await intro(); }
+      await new Promise(res => { screen._done = res; screen(hs === "reset" ? "reset" : "login"); }); u = await me(); }
     if (!u) { screen("login", "Connexion impossible, réessayez."); return new Promise(() => { }); }
     Store.db = DB; Store.uid = u.id; Store.mode = "db"; Store.cloud = true;
     let ed = null;
