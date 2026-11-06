@@ -98,6 +98,7 @@
 
   /* offres et tarifs, affichés sous la connexion (vitrine publique publiée par l'éditeur) */
   let OFF = null;
+  window.SC_OFFRES = f => { if (f) OFF = null; return offres(); };
   async function offres() { const box = () => document.getElementById("clOffres"); try {
       if (!OFF) { const r = await fetch(URL0 + "/rest/v1/sc_docs?select=data&path=eq." + encodeURIComponent("public/offres"), { headers: { apikey: KEY } }); const j = r.ok ? await r.json() : []; OFF = (j[0] && j[0].data) || { offres: [] }; }
       const b = box(); if (!b || !OFF.actif || !(OFF.offres || []).length) return;

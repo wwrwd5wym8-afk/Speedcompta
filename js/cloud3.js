@@ -19,6 +19,7 @@ if (window.SC_CLOUD_ON) (function () {
   document.head.appendChild(st);
   const _rn = renderNow; renderNow = function () { document.documentElement.classList.toggle("sc-cli", cli()); return _rn.apply(this, arguments); };
   const _wel = welHTML;
+  const _wr = welRender; welRender = function () { const r = _wr.apply(this, arguments); if (UI._welcome === "preview" && window.SC_OFFRES) { pubOffres().then(() => SC_OFFRES(true)); } return r; };
   welHTML = function () {
     if (UI._welcome === "preview") { const ico = window.SCLOGO ? SCLOGO.iconURL() : "";
       return `<div class="wel"><div class="wel-prev">👁 <b>Aperçu</b> : voici ce que voit votre client en ouvrant votre lien. <button class="btn sm" data-act="welBack">⟵ Revenir à l'Espace éditeur</button> <button class="btn sm" onclick="SC_INTRO&&SC_INTRO()">▶ Revoir le message de bienvenue</button></div>
@@ -26,7 +27,7 @@ if (window.SC_CLOUD_ON) (function () {
       <h1>Connexion</h1><label>Adresse e-mail<input disabled placeholder="email-du-client@exemple.fr"></label><label>Code d'accès ou mot de passe<input disabled placeholder="SC-XXX-XXXX-XXXX"></label>
       <button class="cl-btn" type="button" disabled>Se connecter</button><p class="cl-sub" style="margin-top:12px">Client : saisissez l'e-mail et le <b>code d'accès</b> reçus de votre cabinet.</p></div></div>
       <div class="panel" style="padding:16px;max-width:560px;margin:0 auto"><b>Ensuite</b><ol class="small" style="line-height:1.8;margin:6px 0 0">
-      <li>Le client tape son e-mail et le code que vous lui avez envoyé.</li><li>Il arrive directement dans <b>sa société</b>, avec uniquement les modules de son offre.</li><li>Il ne peut pas créer de société ni voir vos réglages (Administration, Studio créateur, offres).</li></ol></div></div>`; }
+      <li>Le client tape son e-mail et le code que vous lui avez envoyé.</li><li>Il arrive directement dans <b>sa société</b>, avec uniquement les modules de son offre.</li><li>Il ne peut pas créer de société ni voir vos réglages (Administration, Studio créateur, offres).</li></ol></div><div class="cl-wrap" style="min-height:auto;padding:10px 0 30px"><div id="clOffres"></div></div></div>`; }
     if (!cli()) return _wel.apply(this, arguments); document.documentElement.classList.add("sc-cli");
     const ico = window.SCLOGO ? SCLOGO.iconURL() : ""; const a = UI.access || {};
     return `<div class="cl-wait"><img src="${ico}" alt=""><h1>Bienvenue${UI.userEmail ? "" : ""}</h1>
