@@ -1,4 +1,3 @@
 # SpeedCompta
 
-Application SpeedCompta (version autonome, installable sur iPhone, Android et ordinateur).
-Les données sont enregistrées sur l'appareil de chaque utilisateur. Version : 20261105132652.
+Page d'entrée de SpeedCompta (icône pour l'écran d'accueil) : elle ouvre le logiciel.
