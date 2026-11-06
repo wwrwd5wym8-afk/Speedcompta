@@ -52,8 +52,9 @@
   const nom = () => "SpeedCompta";
   const ico = () => (window.SCLOGO ? SCLOGO.iconURL() : "");
   function errFr(e) { const m = String((e && e.message) || e || "");
-    if (/SC_NO_INVITE|Database error saving new user/i.test(m)) return "Aucune invitation n'existe pour cette adresse e-mail. Utilisez l'adresse à laquelle votre cabinet vous a invité, ou contactez-le.";
-    if (/Invalid login credentials/i.test(m)) return "E-mail ou mot de passe incorrect.";
+    if (/SC_BAD_CODE/i.test(m)) return "E-mail ou code d'accès incorrect.";
+    if (/SC_NO_INVITE|Database error saving new user/i.test(m)) return "E-mail ou code d'accès incorrect. Utilisez l'adresse e-mail et le code envoyés par votre cabinet, ou contactez-le.";
+    if (/Invalid login credentials/i.test(m)) return "E-mail, code d'accès ou mot de passe incorrect.";
     if (/Email not confirmed/i.test(m)) return "Confirmez d'abord votre adresse e-mail (lien reçu par e-mail), puis reconnectez-vous.";
     if (/already registered|already been registered|User already exists/i.test(m)) return "Un compte existe déjà avec cette adresse : connectez-vous.";
     if (/Password should be|at least/i.test(m)) return "Mot de passe trop court : 8 caractères minimum.";
@@ -67,11 +68,11 @@
       <h1>${T[0]}</h1>
       ${mode === "signup" ? `<p class="cl-sub">Utilisez l'adresse e-mail à laquelle votre cabinet vous a invité, puis choisissez votre mot de passe.</p>` : mode === "recover" ? `<p class="cl-sub">Indiquez votre adresse e-mail : vous recevrez un lien pour choisir un nouveau mot de passe.</p>` : ""}
       ${mode !== "reset" ? `<label>Adresse e-mail<input id="clEmail" type="email" autocomplete="email" inputmode="email" required value="${(screen._email || "").replace(/"/g, "&quot;")}"></label>` : ""}
-      ${mode !== "recover" ? `<label>Mot de passe<input id="clPass" type="password" autocomplete="${mode === "login" ? "current-password" : "new-password"}" minlength="8" required></label>` : ""}
+      ${mode !== "recover" ? `<label>${mode === "login" ? "Code d'accès ou mot de passe" : "Mot de passe"}<input id="clPass" type="password" autocomplete="${mode === "login" ? "current-password" : "new-password"}" ${mode === "login" ? 'placeholder="SC-XXX-XXXX-XXXX"' : 'minlength="8"'} required></label>` : ""}
       ${mode === "signup" || mode === "reset" ? `<label>Confirmer le mot de passe<input id="clPass2" type="password" autocomplete="new-password" minlength="8" required></label>` : ""}
       ${msg ? `<div class="cl-msg ${ok ? "ok" : ""}">${msg}</div>` : ""}
       <button class="cl-btn" type="submit">${T[1]}</button>
-      <div class="cl-links">${mode === "login" ? `<a data-cl="signup">Première connexion ?</a><a data-cl="recover">Mot de passe oublié</a>` : mode === "reset" ? "" : `<a data-cl="login">← Retour à la connexion</a>`}</div>
+      ${mode === "login" ? `<p class="cl-sub" style="margin-top:12px">Client : saisissez l'e-mail et le <b>code d'accès</b> reçus de votre cabinet.</p>` : ""}<div class="cl-links">${mode === "login" ? `<a data-cl="recover">Mot de passe oublié (cabinet)</a>` : mode === "reset" ? "" : `<a data-cl="login">← Retour à la connexion</a>`}</div>
     </form></div>`;
     app.querySelectorAll("[data-cl]").forEach(a => a.addEventListener("click", () => { const e = document.getElementById("clEmail"); if (e) screen._email = e.value; screen(a.dataset.cl); }));
     const f = document.getElementById("clForm"); const first = f.querySelector("input"); if (first && !first.value) setTimeout(() => first.focus(), 50);
@@ -81,7 +82,13 @@
       if (mode !== "recover" && mode !== "reset" && (!em || !pw)) return screen(mode, "Renseignez votre e-mail et votre mot de passe.");
       btn.disabled = true; btn.textContent = "Patientez…";
       try {
-        if (mode === "login") { await Auth.login(em.trim(), pw); screen._done(); }
+        if (mode === "login") { const isCode = /^\s*sc-/i.test(pw); const p2 = isCode ? pw.trim().toUpperCase().replace(/\s+/g, "") : pw;
+          try { await Auth.login(em.trim(), p2); }
+          catch (e) { if (!isCode || !/Invalid login credentials/i.test(e.message || "")) throw e;
+            /* première connexion d'un client : son compte est créé avec son code (vérifié par la base) */
+            let s = null; try { s = await Auth.signup(em.trim(), p2); } catch (e2) { if (/already registered|already been registered|User already exists/i.test(e2.message || "")) throw new Error("SC_BAD_CODE"); throw e2; }
+            if (!s) await Auth.login(em.trim(), p2); }
+          screen._done(); }
         else if (mode === "signup") { const s = await Auth.signup(em.trim(), pw); if (s) screen._done(); else screen("login", "Compte créé. Ouvrez l'e-mail de confirmation reçu, puis connectez-vous ici.", true); }
         else if (mode === "recover") { await Auth.recover(em.trim()); screen("login", "Si un compte existe pour cette adresse, un lien vient de vous être envoyé par e-mail.", true); }
         else if (mode === "reset") { await Auth.setPassword(screen._rat, pw); history.replaceState(null, "", location.pathname); screen("login", "Mot de passe modifié : connectez-vous.", true); }

@@ -7,9 +7,10 @@ if (window.SC_CLOUD_ON) (function () {
   const low = s => String(s || "").trim().toLowerCase();
 
   /* ---------- invitations : écrites à chaque enregistrement des accès clients ---------- */
-  async function syncInvites(list) { if (!isAdmin() || !Store.db) return; const seen = new Set();
+  async function syncInvites(list) { if (!isAdmin() || !Store.db) return; const seen = new Set(); let codes = {}; try { codes = await licPriv(); UI.licCodes = codes; } catch (e) { }
     for (const l of list) { const em = low(l.email); if (!em || !/@/.test(em)) continue; seen.add(em); const ref = Store.db.doc("invites/" + em); let old = {}; try { const s = await ref.get(); if (s.exists) old = plain(s.data()); } catch (e) { }
-      await ref.set(Object.assign({}, old, { email: em, client: l.client || "", licence: l.id, statut: l.statut || "actif", access: licAccessFor(l), dossiers: old.uid ? (old.dossiers || []) : (l.dossiers || []), editor: old.editor && old.uid ? old.editor : Store.uid, maj: new Date().toISOString() }));
+      if (old.licence && old.licence !== l.id) old = {};
+      await ref.set(Object.assign({}, old, { email: em, code: String((codes || {})[l.id] || old.code || "").toUpperCase(), client: l.client || "", licence: l.id, statut: l.statut || "actif", access: licAccessFor(l), dossiers: old.uid ? (old.dossiers || []) : (l.dossiers || []), editor: old.editor && old.uid ? old.editor : Store.uid, maj: new Date().toISOString() }));
       if (old.uid) { try { await Store.db.doc("access/" + old.uid).set(Object.assign(licAccessFor(l), { maj: new Date().toISOString() })); } catch (e) { } } }
     try { const q = await Store.db.collection("invites").get(); for (const d of q.docs) { const x = d.data() || {}; if (!seen.has(d.id) && !x.uid) await Store.db.doc("invites/" + d.id).delete(); } } catch (e) { } }
   const _pub = licPublish;
@@ -30,7 +31,6 @@ if (window.SC_CLOUD_ON) (function () {
       const box = dosPicker(M.d, l.uid);
       h = h.replace(/<p class="small muted">Un code d'activation unique est généré[^<]*<\/p>/, `<p class="small muted">Le client ouvre le lien, touche « Première connexion » et crée son mot de passe avec <b>cet e-mail</b> : il obtient automatiquement les accès de l'offre.</p>`);
       const i = h.lastIndexOf('<div class="modal-f'); h = i > 0 ? h.slice(0, i) + box + h.slice(i) : h.replace(/(<\/div>)(\s*<\/div>\s*)$/, box + "$1$2"); }
-    if (M.type === "licDone") h = h.replace(/<div class="lic-code">[\s\S]*?<\/div>/, "");
     return h; };
   Object.assign(LICCHG || (window.LICCHG = {}), { clDos: el => { const d = UI.modal.d; d.dossiers = (d.dossiers || []).filter(x => x !== el.dataset.id); if (el.checked) d.dossiers.push(el.dataset.id); } });
   const _lc = LICACT.licCreate;
