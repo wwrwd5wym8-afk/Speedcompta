@@ -163,8 +163,9 @@
   Store.gate = async function () {
     const hs = hashSession();
     let u = hs === "reset" ? null : await me();
-    if (!u) { if (hs !== "reset") { const sp = document.getElementById("scSplash"); if (sp) sp.remove(); await intro(); }
-      await new Promise(res => { screen._done = res; screen(hs === "reset" ? "reset" : "login"); }); u = await me(); }
+    if (!u) { let om = ""; try { om = sessionStorage.getItem("sc:outMsg") || ""; sessionStorage.removeItem("sc:outMsg"); } catch (e) { }
+      if (hs !== "reset") { const sp = document.getElementById("scSplash"); if (sp) sp.remove(); if (!om) await intro(); }
+      await new Promise(res => { screen._done = res; screen(hs === "reset" ? "reset" : "login", om || undefined, !!om); }); u = await me(); }
     if (!u) { screen("login", "Connexion impossible, réessayez."); return new Promise(() => { }); }
     Store.db = DB; Store.uid = u.id; Store.mode = "db"; Store.cloud = true;
     let ed = null;
