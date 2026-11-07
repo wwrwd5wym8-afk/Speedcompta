@@ -83,6 +83,21 @@ if (window.SC_CLOUD_ON) (function () {
     INDEX.dossiers = (INDEX.dossiers || []).filter(x => !moved.some(m => m.id === x.id)); if (moved.some(m => m.id === INDEX.current)) INDEX.current = (INDEX.dossiers[0] || {}).id || null;
     if (S && moved.some(m => m.id === S.id)) { const id = INDEX.current; const r = id ? await Store.loadDossier(id) : null; if (r && r.meta) setDossier(r.meta, r.ecr); }
     try { await saveIndex(); } catch (e) { } nmT = 0; return moved.length; }
+  /* ---------- réinitialiser l'accès d'un client (compte d'essai, mot de passe oublié, mauvaise adresse) ---------- */
+  async function resetClient(em) { const A = window.SC_AUTH, C = window.SC_CLOUD; const t = await A.token();
+    const r = await fetch(C.url + "/rest/v1/rpc/sc_reset_client", { method: "POST", headers: { apikey: C.key, Authorization: "Bearer " + t, "Content-Type": "application/json" }, body: JSON.stringify({ p_email: em }) });
+    const j = await r.json().catch(() => ({})); if (!r.ok) { const m = (j && (j.message || j.hint)) || r.status; throw new Error(/SC_IS_EDITOR/.test(m) ? "C'est l'adresse de votre compte éditeur : choisissez une autre adresse pour le client." : /function|404|PGRST202/i.test(String(m) + r.status) ? "Mettez à jour la base : recollez supabase_setup.sql dans Supabase › SQL Editor puis « Run »." : String(m)); } return j; }
+  Object.assign(LICACT, { clReset: async el => { const M = UI.modal; const l = licList().find(x => x.id === (el.dataset.id || (M && M.id))); if (!l || !/@/.test(l.email || "")) { toast("Indiquez d'abord l'e-mail du client."); return; }
+    if (!confirm("Réinitialiser l'accès de " + (l.client || l.email) + " ?\n\nSon compte de connexion est supprimé, ses sociétés reviennent dans votre espace (rien n'est perdu), et il se reconnecte avec " + l.email + " + son code d'accès.")) return;
+    toast("Réinitialisation…"); try { const r = await resetClient(l.email); const C = (await Store.db.doc("app/config").get()); if (C.exists) { const c = plain(C.data()); if (c.licences) CONFIG.licences = c.licences; }
+      const I = await Store.getIndex(); if (I && !Store.as) INDEX = I; nmT = 0; toast(r === "none" ? "Aucun compte n'existait : le client peut se connecter avec son e-mail + son code." : "Accès réinitialisé : le client se connecte avec " + l.email + " + son code."); closeModal(); render(); }
+    catch (e) { toast(e.message || String(e)); } } });
+  const _rm3 = renderModal;
+  renderModal = function () { let h = _rm3.apply(this, arguments); const M = UI.modal; if (!M || !isAdmin() || M.type !== "licEdit") return h; const l = licList().find(x => x.id === M.id) || {}; if (!/@/.test(l.email || "")) return h;
+    const box = `<div class="cl-dos" style="margin-top:10px;border-color:#F3D9D6"><b>Le client n'arrive pas à se connecter ?</b><p class="small muted" style="margin:4px 0 8px">Compte créé lors d'un essai, mot de passe oublié, mauvaise adresse : réinitialisez son accès. Ses sociétés reviennent chez vous puis repartent chez lui à sa reconnexion avec <b>${esc(l.email)}</b> + son code.</p><button class="btn sm" data-act="clReset" data-id="${esc(l.id)}">↺ Réinitialiser l'accès</button></div>`;
+    const i = h.lastIndexOf('<div class="modal-f'); return i > 0 ? h.slice(0, i) + box + h.slice(i) : h + box; };
+  const _lc2 = LICACT.licCreate;
+  LICACT.licCreate = async function () { const d = UI.modal && UI.modal.d; if (d && UI.userEmail && low(d.email) === low(UI.userEmail)) { toast("C'est l'adresse de votre compte éditeur : indiquez l'e-mail du client."); return; } return _lc2.apply(this, arguments); };
   const _rm2 = renderModal;
   renderModal = function () { let h = _rm2.apply(this, arguments); const M = UI.modal; if (!M || !isAdmin() || M.type !== "licEdit") return h; const l = licList().find(x => x.id === M.id) || {}; if (!l.uid) return h;
     const own = ((INDEX && INDEX.dossiers) || []).filter(x => !x.demo); M.pl ||= [];

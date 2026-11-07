@@ -53,6 +53,7 @@
   const ico = () => (window.SCLOGO ? SCLOGO.iconURL() : "");
   function errFr(e) { const m = String((e && e.message) || e || "");
     if (/SC_BAD_CODE/i.test(m)) return "E-mail ou code d'accès incorrect.";
+    if (/SC_EXISTS/i.test(m)) return "Un compte existe déjà avec cette adresse e-mail (créé lors d'un essai précédent, ou c'est l'adresse du cabinet). Connectez-vous avec son mot de passe, ou demandez à votre cabinet de cliquer sur « Réinitialiser l'accès ».";
     if (/SC_NO_INVITE|Database error saving new user/i.test(m)) return "E-mail ou code d'accès incorrect. Utilisez l'adresse e-mail et le code envoyés par votre cabinet, ou contactez-le.";
     if (/Invalid login credentials/i.test(m)) return "E-mail, code d'accès ou mot de passe incorrect.";
     if (/Email not confirmed/i.test(m)) return "Confirmez d'abord votre adresse e-mail (lien reçu par e-mail), puis reconnectez-vous.";
@@ -87,8 +88,8 @@
           try { await Auth.login(em.trim(), p2); }
           catch (e) { if (!isCode || !/Invalid login credentials/i.test(e.message || "")) throw e;
             /* première connexion d'un client : son compte est créé avec son code (vérifié par la base) */
-            let s = null; try { s = await Auth.signup(em.trim(), p2); } catch (e2) { if (/already registered|already been registered|User already exists/i.test(e2.message || "")) throw new Error("SC_BAD_CODE"); throw e2; }
-            if (!s) await Auth.login(em.trim(), p2); }
+            let s = null; try { s = await Auth.signup(em.trim(), p2); } catch (e2) { if (/already registered|already been registered|User already exists/i.test(e2.message || "")) throw new Error("SC_EXISTS"); throw e2; }
+            if (!s) { try { await Auth.login(em.trim(), p2); } catch (e3) { if (/Email not confirmed/i.test(e3.message || "")) throw e3; throw new Error("SC_EXISTS"); } } }
           screen._done(); }
         else if (mode === "signup") { const s = await Auth.signup(em.trim(), pw); if (s) screen._done(); else screen("login", "Compte créé. Ouvrez l'e-mail de confirmation reçu, puis connectez-vous ici.", true); }
         else if (mode === "recover") { await Auth.recover(em.trim()); screen("login", "Si un compte existe pour cette adresse, un lien vient de vous être envoyé par e-mail.", true); }
