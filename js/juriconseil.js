@@ -202,7 +202,7 @@ function cjReco() { const q = cjSt().q; const f = cnsRef(); const ca = Number(q.
 const cjNet = (net, k) => { if (!net) return null; const m = { micro: "micro", ei: "ei", eurl: "eurl", sarl: "eurl", sasu: "sasu", sas: "sasu" }[k]; const o = net.out.find(x => x.k === m); return o && o.ok ? o.poche : null; };
 
 /* ---------- vues ---------- */
-const cjHead = (t, lead, tools) => `<div class="pg-h"><div><div class="eyebrow">Conseil · Conseil juridique</div><h1>${t}</h1><p class="lead">${lead}</p></div>${tools ? `<div class="row">${tools}</div>` : ""}</div>`;
+const cjHead = (t, lead, tools) => `<div class="pg-h"><div><div class="eyebrow">Conseil · Juridique</div><h1>${t}</h1><p class="lead">${lead}</p></div>${tools ? `<div class="row">${tools}</div>` : ""}</div>`;
 const cjPill = st => { const i = CJ_STAGES.findIndex(s => s[0] === st); const c = st === "cree" ? "ok" : st === "perdu" ? "ko" : "warn"; return `<span class="pill ${c}">${esc((CJ_STAGES[i] || CJ_STAGES[0])[1])}</span>`; };
 
 VIEWS.cjHub = () => { const C = cjSt(); const P = C.projets; const act = P.filter(p => !["cree", "perdu"].includes(p.stage)); const y = todayISO().slice(0, 4);
@@ -321,9 +321,9 @@ Object.assign(F2CHG, {
 
 /* ---------- branchement dans le menu Conseil ---------- */
 (function () {
-  SPACES.cjur = { lib: "Conseil juridique", mod: "compta", tabs: [["cjHub", "Accompagnements"], ["cjForme", "Choix de la forme juridique"], ["cjCrea", "Création pas à pas"], ["cjEvt", "Vie juridique"], ["cjTpl", "Modèles"]] };
+  SPACES.cjur = { lib: "Juridique", mod: "compta", tabs: [["cjHub", "Accompagnements"], ["cjForme", "Choix de la forme juridique"], ["cjCrea", "Création pas à pas"], ["cjEvt", "Vie juridique"], ["cjTpl", "Modèles"]] };
   const N = NAV2.find(n => n[0] === "finance"); if (N) { ["cjHub", "cjForme", "cjCrea", "cjEvt", "cjTpl"].forEach(v => { if (!N[2].includes(v)) N[2].push(v); });
-    if (Array.isArray(N[3]) && !N[3].some(s => s[2] === "sp:cjur")) { const i = N[3].findIndex(s => s[2] === "sp:cfs"); N[3].splice(i < 0 ? N[3].length : i + 1, 0, ["cjHub", "Conseil juridique", "sp:cjur"]); } }
+    if (Array.isArray(N[3]) && !N[3].some(s => s[2] === "sp:cjur")) { const i = N[3].findIndex(s => s[2] === "sp:cfs"); N[3].splice(i < 0 ? N[3].length : i + 1, 0, ["cjHub", "Juridique", "sp:cjur"]); } }
   const _cs = curSpace; curSpace = function () { if (/^cj[A-Z]/.test(UI.view)) return "cjur"; return _cs.apply(this, arguments); };
   if (typeof ABO_SPMAP !== "undefined" && ABO_SPMAP.finance && !ABO_SPMAP.finance.includes("cjur")) ABO_SPMAP.finance.push("cjur");
   const _bar = spBar; spBar = function () { const h = _bar.apply(this, arguments); return curSpace() === "cjur" ? h.replace("Comptabilité ›", "Conseil ›") : h; };
