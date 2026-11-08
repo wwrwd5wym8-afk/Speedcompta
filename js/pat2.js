@@ -1,7 +1,7 @@
 /* ============================================================
    Gestion du patrimoine (suite) : Retraite (capital nécessaire, effort d'épargne, PER) · Documentation (fiches).
    ============================================================ */
-function patRet() { const P = patSt(); const X = P.ret ||= {}; const F = P.foy; const age = Number(X.age || F.age || 45); const dep = Number(X.dep || 64); const Y = Math.max(0, dep - age); const r = (Number(String(X.rdt || 3).replace(",", ".")) || 0) / 100; const n = Number(X.duree || 25);
+function patRet() { const P = patSt(); const X = P.ret ||= {}; const F = P.foy; const age = Number(X.age || F.age || 45); const dep = Number(X.dep || MC("pat", "retDep") || 64); const Y = Math.max(0, dep - age); const r = (Number(String(X.rdt || MC("pat", "retRdt") || 3).replace(",", ".")) || 0) / 100; const n = Number(X.duree || MC("pat", "retDuree") || 25);
   const souh = patN(X.souh), pens = patN(X.pens); const besoin = Math.max(0, souh - pens); const fa = r ? (1 - Math.pow(1 + r, -n)) / r : n; const cap = Math.round(besoin * 12 * fa);
   const ep = X.ep != null && X.ep !== "" ? patN(X.ep) : P.act.filter(a => ["per", "av", "pea"].includes(a.cat)).reduce((s, a) => s + patN(a.v), 0); const fv = Math.round(ep * Math.pow(1 + r, Y)); const manque = Math.max(0, cap - fv);
   const rm = r / 12, nm = Y * 12; const eff = nm ? Math.round(rm ? manque * rm / (Math.pow(1 + rm, nm) - 1) : manque / nm) : manque; let tmi = 0; try { tmi = patFisc().tmi; } catch (e) { } return { age, dep, Y, r, n, souh, pens, besoin, cap, ep, fv, manque, eff, tmi, effNet: Math.round(eff * (1 - tmi / 100)), taux: souh && pens ? pens / souh : null }; }
