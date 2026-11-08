@@ -21,18 +21,26 @@ Object.assign(F2ACT, {
     let ok = false; if (!Store.dl || window.SC_CLOUD_ON || !window.claude) { try { const u = URL.createObjectURL(new Blob([b], { type: "application/json" })); const a = document.createElement("a"); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); ok = true; } catch (e) { } }
     if (!ok && Store.dl) { try { await Store.dl.save({ filename: name, data: new Blob([b], { type: "application/json" }) }); ok = true; } catch (e) { if (e && e.code === "declined") { toast("Téléchargement annulé."); return; } } }
     if (ok) { closeModal(); toast("« " + name + " » enregistré dans vos téléchargements."); } else toast("Le téléchargement n'a pas abouti : réessayez."); },
-  trImp: () => { if (window.SC_CLOUD_ON && !isAdmin()) { toast("L'import de société est réservé au cabinet."); return; } const i = document.createElement("input"); i.type = "file"; i.accept = ".speedcompta,.json,application/json";
-    i.onchange = async () => { const f = i.files && i.files[0]; if (!f) return; try { toast("Import en cours…"); const F = JSON.parse(await f.text()); if (Store.flush) await Store.flush(); const r = await trImport(F); const d = await Store.loadDossier(r.id); if (d && d.meta) setDossier(d.meta, d.ecr); toast("Société importée : " + r.nom); go("dashboard"); } catch (e) { toast("Import impossible : " + (e.message || e)); } };
+  trImp: () => { if (window.SC_CLOUD_ON && !isAdmin()) { toast("L'import de société est réservé au cabinet."); return; } const i = document.createElement("input"); i.type = "file"; i.style.display = "none"; document.body.appendChild(i);
+    i.onchange = async () => { const f = i.files && i.files[0]; i.remove(); if (!f) return; let F;
+      try { const txt = await f.text(); try { F = JSON.parse(txt); } catch (e) { throw new Error("le fichier « " + f.name + " » n'est pas un export de société SpeedCompta (fichier .speedcompta)."); }
+        openModal({ type: "trWait", nom: F && F.nom || f.name }); render();
+        if (Store.as) { try { await Store.flush(); } catch (e) { } Store.as = null; Store.asLabel = ""; INDEX = (await Store.getIndex()) || { dossiers: [] }; }
+        if (Store.flush) await Store.flush(); const r = await trImport(F); const d = await Store.loadDossier(r.id); if (d && d.meta) setDossier(d.meta, d.ecr);
+        closeModal(); toast("✓ Société importée : " + r.nom); go("dashboard"); }
+      catch (e) { console.warn(e); openModal({ type: "trErr", msg: (e && e.message) || String(e) }); } };
     i.click(); }
 });
 /* boutons dans « Dossiers » */
 (function () { const _v = VIEWS.dossiers; if (!_v) return; VIEWS.dossiers = function () { const h = _v.apply(this, arguments); if (window.SC_CLOUD_ON && !isAdmin()) return h;
   const bar = `<div class="tr-bar"><span>🔁 <b>Transférer une société</b> entre la version Claude et la version autonome, ou vers un autre cabinet.</span><div class="row"><button class="btn sm" data-act="trImp">⬆ Importer une société</button>${S && !S.demo ? `<button class="btn sm" data-act="trExp" data-id="${esc(S.id)}">⬇ Exporter ${esc(S.nom)}</button>` : ""}</div></div>`;
   const i = h.indexOf("</h1>"); if (i < 0) return bar + h; const j = h.indexOf("</div></div>", i); return j > 0 ? h.slice(0, j + 12) + bar + h.slice(j + 12) : h + bar; };
-  const st = document.createElement("style"); st.textContent = `.tr-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#F5F8F8;border:1px solid #E3EBEA;border-radius:12px;padding:10px 14px;margin:0 0 14px;font-size:13.5px}`; document.head.appendChild(st); })();
+  const st = document.createElement("style"); st.textContent = `.tr-spin{width:36px;height:36px;margin:0 auto 12px;border-radius:50%;border:4px solid #E3EBEA;border-top-color:#13585A;animation:trS .8s linear infinite}@keyframes trS{to{transform:rotate(360deg)}}.tr-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#F5F8F8;border:1px solid #E3EBEA;border-radius:12px;padding:10px 14px;margin:0 0 14px;font-size:13.5px}`; document.head.appendChild(st); })();
 
 const _rmTr = renderModal;
-renderModal = function () { const M = UI.modal; if (!M || M.type !== "trReady") return _rmTr.apply(this, arguments);
+renderModal = function () { const M = UI.modal; if (M && M.type === "trWait") return `<div class="modal-bg"><div class="modal" style="max-width:420px"><div class="modal-b" style="text-align:center;padding:28px"><div class="tr-spin"></div><p><b>Import de ${esc(M.nom || "la société")}…</b><br><span class="small muted">Écritures, factures et paramètres : quelques secondes.</span></p></div></div></div>`;
+  if (M && M.type === "trErr") return `<div class="modal-bg"><div class="modal" style="max-width:460px"><div class="modal-h"><h3>Import impossible</h3><button class="x" data-act="closeModal" aria-label="Fermer">×</button></div><div class="modal-b"><p>${esc(M.msg)}</p><p class="small muted">Vérifiez que vous avez choisi le fichier <b>.speedcompta</b> exporté depuis SpeedCompta, et que vous êtes connecté en tant que cabinet. Si le problème persiste, envoyez une capture de ce message.</p></div><div class="modal-f"><button class="btn pri" data-act="trImp">Choisir un autre fichier</button></div></div></div>`;
+  if (!M || M.type !== "trReady") return _rmTr.apply(this, arguments);
   return `<div class="modal-bg"><div class="modal" style="max-width:460px"><div class="modal-h"><h3>Export prêt</h3><button class="x" data-act="closeModal" aria-label="Fermer">×</button></div><div class="modal-b" style="text-align:center">
     <div style="font-size:40px">📦</div><p><b>${esc(M.nom)}</b><br><span class="small muted">${M.n} documents · ${Math.max(1, Math.round(M.size / 1024))} Ko</span></p>
     <button class="btn pri" style="font-size:15px;padding:12px 22px" data-act="trDl">⬇ Télécharger ${esc(M.name)}</button>
