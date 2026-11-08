@@ -1,0 +1,36 @@
+/* ============================================================
+   Paramètres › Ordre des modules : réorganiser le menu (glisser-déposer ou flèches),
+   masquer des modules. Créateur : ordre publié pour tous les utilisateurs.
+   Utilisateur : ordre personnel conservé sur son appareil.
+   ============================================================ */
+const MO_LS = "sc:navOrder";
+function moPerso() { try { return JSON.parse(localStorage.getItem(MO_LS) || "null"); } catch (e) { return null; } }
+/* l'ordre personnel s'applique par-dessus le paramétrage publié */
+(function () { const _ms = modStore; modStore = function () { const base = _ms.apply(this, arguments); if (isAdmin()) return base; const P = moPerso(); if (!P || !P.length) return base; const o = Object.assign({}, base); P.forEach((k, i) => { o[k] = Object.assign({}, o[k] || {}, { ordre: i * 10 }); }); return o; }; })();
+function moList() { const M = modStore(); return NAV2.slice().sort((a, b) => ((M[a[0]] || {}).ordre ?? NAV2_ORIG.indexOf(a[0]) * 10) - ((M[b[0]] || {}).ordre ?? NAV2_ORIG.indexOf(b[0]) * 10)).filter(n => isAdmin() || navVisible(n[0])); }
+function moSave(keys) { if (isAdmin()) { UI.cfg ||= deep(CONFIG); const C = UI.cfg.modules ||= {}; keys.forEach((k, i) => { (C[k] ||= {}).ordre = i * 10; }); } else { try { localStorage.setItem(MO_LS, JSON.stringify(keys)); } catch (e) { } } render(); }
+VIEWS.modOrder = () => { const L = moList(); const M = modStore(); const dirty = isAdmin() && UI.cfg && JSON.stringify(UI.cfg) !== JSON.stringify(CONFIG);
+  return `<div class="pg-h"><div><div class="eyebrow">Paramètres</div><h1>Ordre des modules</h1><p class="lead">Placez les modules dans l'ordre qui vous convient : faites-les glisser, ou utilisez les flèches. Le menu de gauche se met à jour aussitôt.${isAdmin() ? " Votre ordre s'applique à tous les utilisateurs une fois publié." : " Cet ordre vous est propre."}</p></div><div class="row"><button class="btn ghost" data-act="moReset">Rétablir l'ordre d'origine</button>${isAdmin() ? `<button class="btn pri" data-act="admPublish" ${dirty ? "" : "disabled"}>Publier pour tous</button>` : ""}</div></div>
+    <section class="card mo-card"><ol class="mo-list" id="moList">${L.map((n, i) => { const k = n[0]; const c = M[k] || {}; return `<li class="mo-it ${c.masque ? "mo-off" : ""}" draggable="true" data-k="${esc(k)}"><span class="mo-h" title="Glisser pour déplacer">⠿</span><span class="mo-n">${i + 1}</span><span class="mo-ic">${ico(IC[k] ? k : "doc")}</span><b>${esc(navLabel(k, n[1]))}</b>${c.masque ? '<span class="pill">masqué</span>' : ""}<span class="mo-sp"></span>
+      <button class="mo-b" data-act="moMove" data-k="${esc(k)}" data-v="top" title="Tout en haut" ${i ? "" : "disabled"}>⤒</button><button class="mo-b" data-act="moMove" data-k="${esc(k)}" data-v="-1" title="Monter" ${i ? "" : "disabled"}>↑</button><button class="mo-b" data-act="moMove" data-k="${esc(k)}" data-v="1" title="Descendre" ${i < L.length - 1 ? "" : "disabled"}>↓</button><button class="mo-b" data-act="moMove" data-k="${esc(k)}" data-v="bottom" title="Tout en bas" ${i < L.length - 1 ? "" : "disabled"}>⤓</button>${isAdmin() ? `<label class="chk mo-m"><input type="checkbox" data-ch="moHide" data-k="${esc(k)}" ${c.masque ? "checked" : ""}> Masquer</label>` : ""}</li>`; }).join("")}</ol></section>
+    <p class="small muted">Pour réordonner, renommer ou masquer les onglets à l'intérieur d'un module, ouvrez le module puis ⚙ Paramétrer › Onglets.</p>`; };
+Object.assign(F2ACT, {
+  moMove: el => { const keys = moList().map(n => n[0]); const i = keys.indexOf(el.dataset.k); if (i < 0) return; const v = el.dataset.v; keys.splice(i, 1); const j = v === "top" ? 0 : v === "bottom" ? keys.length : Math.max(0, Math.min(keys.length, i + Number(v))); keys.splice(j, 0, el.dataset.k); moSave(keys); },
+  moReset: () => { if (isAdmin()) { UI.cfg ||= deep(CONFIG); const C = UI.cfg.modules ||= {}; Object.values(C).forEach(o => { if (o) delete o.ordre; }); } try { localStorage.removeItem(MO_LS); } catch (e) { } render(); toast("Ordre d'origine rétabli" + (isAdmin() ? " (publiez pour l'appliquer à tous)." : ".")); }
+});
+Object.assign(F2CHG, { moHide: el => { UI.cfg ||= deep(CONFIG); const C = UI.cfg.modules ||= {}; (C[el.dataset.k] ||= {}).masque = el.checked; if (!el.checked) delete C[el.dataset.k].masque; render(); } });
+/* glisser-déposer */
+let moDrag = null;
+document.addEventListener("dragstart", e => { const li = e.target.closest && e.target.closest(".mo-it"); if (!li) return; moDrag = li.dataset.k; li.classList.add("mo-drag"); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", moDrag); } catch (x) { } });
+document.addEventListener("dragover", e => { if (!moDrag) return; const li = e.target.closest && e.target.closest(".mo-it"); if (!li) return; e.preventDefault(); document.querySelectorAll(".mo-it").forEach(x => x.classList.remove("mo-ab", "mo-be")); const r = li.getBoundingClientRect(); li.classList.add(e.clientY < r.top + r.height / 2 ? "mo-ab" : "mo-be"); });
+document.addEventListener("drop", e => { if (!moDrag) return; const li = e.target.closest && e.target.closest(".mo-it"); if (!li) return; e.preventDefault(); const keys = moList().map(n => n[0]).filter(k => k !== moDrag); const r = li.getBoundingClientRect(); let j = keys.indexOf(li.dataset.k); if (li.dataset.k === moDrag) { moDrag = null; render(); return; } if (e.clientY >= r.top + r.height / 2) j++; keys.splice(j, 0, moDrag); moDrag = null; moSave(keys); });
+document.addEventListener("dragend", () => { moDrag = null; document.querySelectorAll(".mo-it").forEach(x => x.classList.remove("mo-drag", "mo-ab", "mo-be")); });
+(function () {
+  MOD_DEFS.modOrder = { lib: "Ordre des modules", files: ["modorder.js"], links: [], set: [] };
+  const N = NAV2.find(n => n[0] === "params"); if (N) { if (!N[2].includes("modOrder")) N[2].push("modOrder"); N[3] = [["params", "Paramètres généraux"], ["modOrder", "Ordre des modules"]]; }
+  const st = document.createElement("style"); st.textContent = `.mo-card{padding:8px}.mo-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.mo-it{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #E3EAE9;border-radius:12px;padding:10px 12px;cursor:grab;transition:box-shadow .15s,transform .15s}.mo-it:hover{box-shadow:0 6px 18px rgba(15,61,62,.08)}.mo-it.mo-drag{opacity:.45}.mo-it.mo-ab{box-shadow:inset 0 3px 0 #F5B700}.mo-it.mo-be{box-shadow:inset 0 -3px 0 #F5B700}.mo-it.mo-off b{opacity:.5}
+.mo-h{color:#9AAAAA;font-size:18px;cursor:grab}.mo-n{width:24px;height:24px;border-radius:50%;background:#E7EFEE;display:grid;place-items:center;font-size:12px;font-weight:700;color:#0F3D3E;flex:none}.mo-ic{display:grid;place-items:center;color:#13585A}.mo-ic svg{width:20px;height:20px}.mo-sp{flex:1}
+.mo-b{width:32px;height:32px;border:1px solid #DCE5E4;background:#fff;border-radius:8px;cursor:pointer;font-size:15px}.mo-b:hover:not(:disabled){background:#EAF1F0}.mo-b:disabled{opacity:.3;cursor:default}.mo-m{margin-left:6px;font-size:13px}
+@media (max-width:760px){.mo-b[data-v=top],.mo-b[data-v=bottom]{display:none}.mo-m{display:none}}`; document.head.appendChild(st);
+})();
