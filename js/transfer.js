@@ -6,12 +6,15 @@
 const TR_SUB = ["m", "ventes", "inbox"];
 async function trExport(id) { if (!Store.db) throw new Error("Stockage en ligne indisponible."); const base = Store.base() + "/d_" + id; const s = await Store.db.doc(base).get(); if (!s.exists) throw new Error("Société introuvable.");
   const docs = { "": plain(s.data()) }; for (const c of TR_SUB) { const q = await Store.db.doc(base).collection(c).get(); q.docs.forEach(d => { docs[c + "/" + d.id] = plain(d.data()); }); }
-  return { format: "speedcompta-societe", v: 1, exporte: new Date().toISOString(), id, nom: docs[""].nom || "Société", docs }; }
+  const ent = ((INDEX && INDEX.dossiers) || []).find(d => d.id === id) || {};
+  return { format: "speedcompta-societe", v: 1, exporte: new Date().toISOString(), id, nom: docs[""].nom || "Société", sum: ent.sum || null, docs }; }
 async function trImport(F) { if (!Store.db) throw new Error("Stockage en ligne indisponible."); if (!F || F.format !== "speedcompta-societe" || !F.docs || !F.docs[""]) throw new Error("Ce fichier n'est pas un export de société SpeedCompta.");
-  INDEX.dossiers ||= []; let id = F.id || uid(); const exists = INDEX.dossiers.some(d => d.id === id) || (await Store.db.doc(Store.base() + "/d_" + id).get()).exists; if (exists) id = uid();
-  const base = Store.base() + "/d_" + id; const meta = Object.assign({}, F.docs[""], { id }); let nom = meta.nom || "Société"; if (INDEX.dossiers.some(d => d.nom === nom)) { nom += " (import)"; meta.nom = nom; }
+  INDEX.dossiers ||= []; let id = F.id || uid(); const same = INDEX.dossiers.find(d => d.id === id); let replace = false;
+  if (same) replace = confirm("« " + (same.nom || F.nom) + " » existe déjà dans votre liste.\n\nOK : la remplacer par le fichier importé.\nAnnuler : l'importer comme une nouvelle société.");
+  if (!replace && (same || (await Store.db.doc(Store.base() + "/d_" + id).get()).exists)) id = uid();
+  const base = Store.base() + "/d_" + id; const meta = Object.assign({}, F.docs[""], { id }); let nom = meta.nom || "Société"; if (!replace && INDEX.dossiers.some(d => d.nom === nom)) { nom += " (import)"; meta.nom = nom; }
   await Store.db.doc(base).set(meta); for (const k of Object.keys(F.docs)) { if (!k) continue; const [c, d] = k.split("/"); if (!TR_SUB.includes(c) || !d) continue; await Store.db.doc(base).collection(c).doc(d).set(F.docs[k]); }
-  INDEX.dossiers.push({ id, nom }); await saveIndex(); return { id, nom }; }
+  const ent = { id, nom }; if (F.sum) ent.sum = F.sum; if (replace) Object.assign(same, ent); else INDEX.dossiers.push(ent); INDEX.current = id; await saveIndex(); return { id, nom }; }
 Object.assign(F2ACT, {
   trExp: async el => { const id = el.dataset.id || (S && S.id); try { if (Store.flush) await Store.flush(); toast("Préparation de l'export…"); const F = await trExport(id); const n = Object.keys(F.docs).length - 1;
       const name = (F.nom || "societe").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\W+/g, "_") + ".speedcompta"; const bytes = new TextEncoder().encode(JSON.stringify(F));
