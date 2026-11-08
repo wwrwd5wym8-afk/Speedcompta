@@ -21,9 +21,8 @@ const ACT = {
   go: el => { if (el.dataset.tab && el.dataset.tab.startsWith("sp:")) { spGo(el.dataset.tab.slice(3)); return; } if (el.dataset.v === "balrev" && el.dataset.tab) { const st = brState(); if (st.type !== el.dataset.tab) { st.type = el.dataset.tab; st.sel = ""; st.chk = []; } go("balrev"); return; } if (el.dataset.tab && (el.dataset.v === "paramCompta" || el.dataset.v === "bqParam")) { UI.sub.pc = { tab: el.dataset.tab, q: "" }; go(el.dataset.v); return; } if (el.dataset.tab) { const ex = exCur(); UI.sub.consult = Object.assign({ tab: "gl", compte: "", aux: "", from: ex.debut, to: ex.fin, open: false, bal: "G", journal: "" }, UI.sub.consult || {}, { tab: el.dataset.tab }, el.dataset.bal ? { bal: el.dataset.bal } : el.dataset.tab === "bal" ? { bal: "G" } : {}); } go(el.dataset.v); },
   menu: () => { UI.railOpen = !UI.railOpen; $("#rail").classList.toggle("open", UI.railOpen); },
   navGroup: el => { const k = el.dataset.k; const n = NAV2.find(x => x[0] === k); const views = n ? n[2] : [el.dataset.v]; const sub = n && Array.isArray(n[3]) ? n[3] : null;
-    if (views.includes(UI.view)) { UI.navShut = UI.navShut === k ? "" : k; UI.navOpen = ""; render(); return; }
-    UI.navShut = "";
     const mt = $(".mob-top"); const mobile = !!mt && getComputedStyle(mt).display !== "none";
+    if (views.includes(UI.view)) { if (mobile) { UI.navOpen = UI.navOpen === k ? "" : k; UI.railOpen = true; render(); } return; }
     if (mobile && sub && sub.length > 1) { UI.navOpen = UI.navOpen === k ? "" : k; UI.railOpen = true; render(); return; }
     if (!UI.navLast) { try { UI.navLast = JSON.parse(localStorage.getItem("sc:navLast") || "{}"); } catch (e) { UI.navLast = {}; } }
     if (sub && sub[0]) { const li = UI.navLast[k]; const ss = sub[li] && (typeof navVisibleSub !== "function" || navVisibleSub(sub[li])) ? sub[li] : sub[0]; const [v, , tab] = ss; ACT.go({ dataset: { v, tab: tab || "" } }); } else go(el.dataset.v);

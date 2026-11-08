@@ -14,9 +14,8 @@
   let pop = null, tIn = null, tOut = null, cur = null;
   const close = () => { clearTimeout(tIn); if (pop) { pop.remove(); pop = null; cur = null; } };
   function show(a) { const k = a.dataset.k; const n = (typeof NAV2 !== "undefined" ? NAV2 : []).find(x => x[0] === k); const sub = n && Array.isArray(n[3]) ? n[3] : null; if (!sub || sub.length < 2) { close(); return; }
-    if (a.classList.contains("on") && UI.navShut !== k) { close(); return; }
     close(); cur = k; pop = document.createElement("div"); pop.className = "nf-pop";
-    pop.innerHTML = `<div class="nf-h">${esc(a.textContent.trim())}</div>` + sub.map(x => { const [v, l, tab] = x; const on = typeof navSubOn === "function" && navSubOn(x); return `<a data-act="go" data-v="${esc(v)}" ${tab ? `data-tab="${esc(tab)}"` : ""} class="${on ? "on" : ""}">${l}</a>`; }).join("");
+    pop.innerHTML = `<div class="nf-h">${esc(((a.querySelector("span") || a).textContent || "").trim())}</div>` + sub.map(x => { const [v, l, tab] = x; const on = typeof navSubOn === "function" && navSubOn(x); return `<a data-act="go" data-v="${esc(v)}" ${tab ? `data-tab="${esc(tab)}"` : ""} class="${on ? "on" : ""}">${l}</a>`; }).join("");
     document.body.appendChild(pop); const r = a.getBoundingClientRect(); const ph = pop.offsetHeight; pop.style.left = (r.right + 8) + "px"; pop.style.top = Math.max(8, Math.min(r.top - 6, innerHeight - ph - 8)) + "px";
     pop.addEventListener("mouseenter", () => clearTimeout(tOut)); pop.addEventListener("mouseleave", () => { tOut = setTimeout(close, 220); }); pop.addEventListener("click", () => setTimeout(close, 0)); }
   document.addEventListener("mouseover", e => { if (!hoverOK()) return; const a = e.target.closest && e.target.closest('.nav2 > a[data-act="navGroup"]'); if (!a) return; clearTimeout(tOut); if (cur === a.dataset.k && pop) return; clearTimeout(tIn); tIn = setTimeout(() => show(a), 180); });

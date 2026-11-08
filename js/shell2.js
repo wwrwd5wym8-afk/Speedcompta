@@ -55,7 +55,7 @@ function shell() {
   const ex = exCur();
   const navList = NAV2.filter(n => navVisible(n[0])).map(n => [n[0], navLabel(n[0], n[1]), n[2], n[3]]).concat(NAV_EXT.map(([v, l, i]) => [i, l, [v]])).concat(isAdmin() ? [["admin", "Administration", ["admin"]], ["doc", "Studio créateur", ["studio"]]] : []);
   const nav = navList.map(([k, l, views, sub]) => {
-    const on = views.includes(UI.view); const open = UI.navOpen === k || (on && sub && UI.navShut !== k); if (on && sub) { const si = sub.findIndex(x => navSubOn(x)); if (si >= 0) { (UI.navLast ||= {})[k] = si; try { localStorage.setItem("sc:navLast", JSON.stringify(UI.navLast)); } catch (e) { } } }
+    const on = views.includes(UI.view); const open = UI.navOpen === k || (on && sub && !sub.some(x => navSubOn(x))); if (on && sub) { const si = sub.findIndex(x => navSubOn(x)); if (si >= 0) { (UI.navLast ||= {})[k] = si; try { localStorage.setItem("sc:navLast", JSON.stringify(UI.navLast)); } catch (e) { } } }
     return `<a data-act="${sub ? "navGroup" : "go"}" data-k="${k}" data-v="${views[0]}" class="${on ? "on" : ""}" ${on ? 'aria-current="page"' : ""} ${sub ? `aria-expanded="${open}"` : ""}>${ico(IC[k] ? k : "doc")}<span>${l}</span>${navBadge(k)}</a>${sub && (open || on) ? `<div class="subnav ${open ? "" : "sub-one"}">${sub.map(x => { const [v, sl, tab] = x; const son = navSubOn(x); if (!open && !son) return ""; return `<a data-act="go" data-v="${v}" ${tab ? `data-tab="${tab}"` : ""} class="${son ? "on" : ""}">${sl}</a>`; }).join("")}</div>` : ""}${k === "dossiers" || k === "params" ? '<div class="navsep"></div>' : ""}`;
   }).join("");
   const alerts = notifications();
