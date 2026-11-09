@@ -1,5 +1,5 @@
 /* ============================================================
-   Comptabilité › Programme de révision (toolcase par cycles A → DG)
+   Comptabilité › Programme de révision (dossier de travail par cycles A → DG)
    Feuilles de travail liées à la balance, génération automatique des écritures
    d'inventaire (CCA, PCA, FNP, FAE, CAP, PAR, ICNE, congés payés, créances douteuses,
    stocks, provisions, IS) avec contrepassation à l'ouverture, contrôles (rapprochement,
@@ -124,7 +124,7 @@ function prvProg(ex) { const X = prvSt(ex); const n = PRV_T.length; const done =
 VIEWS.prvTools = () => { const ex = exCur(); const X = prvSt(ex); const u = UI.sub.prv ||= { cyc: "A", nat: "", st: "" }; const P = prvProg(ex);
   const list = PRV_T.filter(t => t[1] === u.cyc && (u.tout || prvAppl(t[0], ex).ok) && (!u.nat || t[3] === u.nat) && (!u.st || (X.t[t[0]] || {}).st === u.st || (!X.t[t[0]] && u.st === "todo")));
   const cyc = PRV_CYC.find(c => c[0] === u.cyc); const B = prvBal(ex);
-  return PRV_H("Toolcase", "Les feuilles de travail de révision, cycle par cycle : chacune lit la balance, calcule et génère les écritures d'inventaire.", `<button class="btn" data-act="prvDossier" data-f="xlsx">⇩ Matrices Excel</button><button class="btn" data-act="prvDossier" data-f="docx">⇩ Dossier Word</button><button class="btn pri" data-act="prvGenAll">⚡ Générer toutes les écritures</button>`) +
+  return PRV_H("Dossier de travail", "Les feuilles de travail de révision, cycle par cycle : chacune lit la balance, calcule et génère les écritures d'inventaire.", `<button class="btn" data-act="prvDossier" data-f="xlsx">⇩ Matrices Excel</button><button class="btn" data-act="prvDossier" data-f="docx">⇩ Dossier Word</button><button class="btn pri" data-act="prvGenAll">⚡ Générer toutes les écritures</button>`) +
     `<div class="fin-k"><div><span>Avancement</span><b class="mono">${P.pct} %</b><div class="cj-bar"><i style="width:${P.pct}%"></i></div><small class="muted">${P.done} / ${P.n} feuilles terminées</small></div><div><span>Feuilles avec écritures</span><b class="mono">${P.gen}</b></div><div><span>Points en suspens</span><b class="mono ${P.sus ? "ko" : ""}">${P.sus}</b></div><div><span>Résultat comptable</span><b class="mono">${eur0(-prvSum(B.m, ["6", "7"]))}</b></div></div>
     <div class="prv-box"><div class="prv-main"><div class="prv-flt"><label>Nature <select class="in" data-ch="prvU" data-f="nat"><option value="">Toutes</option><option value="s" ${u.nat === "s" ? "selected" : ""}>Avec écritures</option><option value="c" ${u.nat === "c" ? "selected" : ""}>Contrôles</option><option value="n" ${u.nat === "n" ? "selected" : ""}>Notes</option></select></label><label class="chk"><input type="checkbox" data-ch="prvTout" ${u.tout ? "checked" : ""}> Afficher aussi les feuilles non applicables</label><label>Statut <select class="in" data-ch="prvU" data-f="st"><option value="">Tous</option>${Object.entries(PRV_ST).map(([k, [l]]) => `<option value="${k}" ${u.st === k ? "selected" : ""}>${l}</option>`).join("")}</select></label></div>
       <h2 class="prv-cyc"><span>${esc(cyc[0])}</span>Cycle ${esc(cyc[0])} · ${esc(cyc[1])}</h2>
@@ -212,7 +212,7 @@ Object.assign(F2CHG, {
   prvComm: el => { const t = prvTool(el.dataset.k); t.comm = el.value; t.majPar = prvMe(); t.majLe = new Date().toISOString(); if (t.st === "todo" && el.value) t.st = "cours"; Store.touch(); }
 });
 (function () {
-  const TABS = [["prvTools", "Toolcase"], ["prvWs", "Feuille de travail"], ["prvEcr", "Écritures générées"], ["prvMemo", "Mémos de révision"], ["prvSyn", "Synthèse"]];
+  const TABS = [["prvTools", "Dossier de travail"], ["prvWs", "Feuille de travail"], ["prvEcr", "Écritures générées"], ["prvMemo", "Mémos de révision"], ["prvSyn", "Synthèse"]];
   SPACES.prv = { lib: "Programme de révision", mod: "progrev", tabs: TABS.map(t => t.slice()) };
   const C = NAV2.find(n => n[0] === "compta"); if (C) { TABS.forEach(([v]) => { if (!C[2].includes(v)) C[2].push(v); }); if (Array.isArray(C[3]) && !C[3].some(s => s[2] === "sp:prv")) { const i = C[3].findIndex(s => s[2] === "sp:rap"); C[3].splice(i < 0 ? C[3].length : i, 0, ["prvTools", "Programme de révision", "sp:prv"]); } }
   const _cs = curSpace; curSpace = function () { if (/^prv[A-Z]/.test(UI.view)) return "prv"; return _cs.apply(this, arguments); };

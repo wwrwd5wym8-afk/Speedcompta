@@ -1,5 +1,5 @@
 /* ============================================================
-   Toolcase · TVA : TVA normale ou sur les débits, TVA sur les encaissements
+   Dossier de travail · TVA : TVA normale ou sur les débits, TVA sur les encaissements
    (copie des modèles du cabinet : déclarations mensuelles, comptabilité ventilée par taux,
    régularisations FAE / PCA, contrôle du compte 4457, écarts de bases, contrôle des
    encaissements, TVA non récupérable sur les prestataires).

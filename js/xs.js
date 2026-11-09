@@ -1,5 +1,5 @@
 /* ============================================================
-   XS : moteur de feuilles de calcul du Toolcase (copie des modèles Excel du cabinet).
+   XS : moteur de feuilles de calcul du Dossier de travail (copie des modèles Excel du cabinet).
    - modèle = classeur de feuilles, cellules adressées comme dans Excel (A1), formules Excel ;
    - affichage tableur dans le logiciel : cellules de saisie (jaunes), cellules calculées
      (bleues), résultats (verts), formules recalculées en direct, enregistrement automatique ;
@@ -117,7 +117,7 @@ async function xsImport(k, file) { const ex = exCur(); const t = prvTool(k, ex);
 function xsBook(k, ex) { ex = ex || exCur(); const t = prvTool(k, ex); t.xs ||= {}; const sheets = XS_MODELS[k](ex, t); return new XBook(sheets, t.xs); }
 function xsView(k, ex, t) { let book; try { book = xsBook(k, ex); } catch (e) { logErr("feuille " + k, e); return p2Al("ko", "Feuille indisponible : " + esc(e.message)); }
   return `<section class="card xs-card"><div class="card-h"><div class="xs-leg"><span class="xs-i">Saisie</span><span class="xs-c">Calcul ou comptabilité</span><span class="xs-g">Résultat</span></div><div class="row" style="gap:6px"><button class="btn sm" data-act="xsReset" data-k="${k}" title="Effacer les saisies et reprendre les valeurs de la comptabilité">↺ Recharger depuis la comptabilité</button><button class="btn sm" data-act="xsRows" data-k="${k}" title="Ajouter des lignes de saisie">＋ 5 lignes</button><button class="btn sm" data-act="xsExp" data-k="${k}">⇩ Excel avec formules</button><label class="btn sm pri">⇪ Réimporter l'Excel<input type="file" accept=".xlsx" data-ch="xsImp" data-k="${k}" hidden></label></div></div><div class="xs-book">${xsRender(book, k)}</div></section>` + (PRV_X[k] && PRV_X[k].lines ? p2Ecr(k, ex) : ""); }
-function xsExport(k) { const ex = exCur(); const book = xsBook(k, ex); const D = prvDef(k); const nm = "Toolcase_" + cjFile(D[2]) + "_" + cjFile(S.nom) + "_" + ex.fin.slice(0, 4); deliverFile(nm + ".xlsx", xsXLSX(book), "xlsx", null, { cat: "Révision", lib: D[2] }); }
+function xsExport(k) { const ex = exCur(); const book = xsBook(k, ex); const D = prvDef(k); const nm = "Dossier_de_travail_" + cjFile(D[2]) + "_" + cjFile(S.nom) + "_" + ex.fin.slice(0, 4); deliverFile(nm + ".xlsx", xsXLSX(book), "xlsx", null, { cat: "Révision", lib: D[2] }); }
 Object.assign(F2ACT, {
   xsExp: el => xsExport(el.dataset.k),
   xsRows: el => { const t = prvTool(el.dataset.k); t.xs ||= {}; t.xs._rows = (+t.xs._rows || 0) + 5; Store.touch(); render(); },

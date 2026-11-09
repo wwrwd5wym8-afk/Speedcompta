@@ -1,5 +1,5 @@
 /* ============================================================
-   Toolcase · modèles Excel du cabinet (2/2) : résultat fiscal 2058-A et report des déficits,
+   Dossier de travail · modèles Excel du cabinet (2/2) : résultat fiscal 2058-A et report des déficits,
    résultat fiscal simplifié, autres résultats fiscaux (écarts de conversion, C3S, mécénat),
    taxes sur l'affectation des véhicules, TVA sur les débits et TVA sur les encaissements.
    ============================================================ */

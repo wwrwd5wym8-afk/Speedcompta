@@ -1,5 +1,5 @@
 /* ============================================================
-   Toolcase · modèles Excel du cabinet (1/2) : intérêts des comptes courants, indemnités
+   Dossier de travail · modèles Excel du cabinet (1/2) : intérêts des comptes courants, indemnités
    kilométriques, dépréciation des stocks, filiales et participations, rapprochement DSN,
    clients douteux, social, inventaire des VMP, récapitulatif des emprunts, écarts de change.
    Copie des maquettes : mêmes colonnes, mêmes formules ; données reprises de la comptabilité.
