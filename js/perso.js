@@ -17,7 +17,7 @@ function xsApplyOv(sheets, k, t) { const G = ((psRoot().xsOv || {})[k]) || {}; c
     if ("x" in ov) { const x = String(ov.x ?? ""); if (x.startsWith("=")) { c.f = x; delete c.v; } else { delete c.f; c.v = x !== "" && /^[-+]?[\d\s .,]+%?$/.test(x.trim()) ? xsNum(x) : x; } }
     if (ov.in) { c.in = 1; c.id ||= "ov_" + sh.name + "_" + ref; if (!c.st || c.st === "lbl" || c.st === "c") c.st = "i"; } else if (ov.in === 0) delete c.in;
     if (ov.st) c.st = ov.st; if (ov.fmt) c.fmt = ov.fmt === "-" ? undefined : ov.fmt; }); }); }
-xsBook = function (k, ex) { ex = ex || exCur(); const t = prvTool(k, ex); t.xs ||= {}; const sheets = XS_MODELS[k](ex, t); try { xsApplyOv(sheets, k, t); } catch (e) { logErr("feuille perso", e); } return new XBook(sheets, t.xs); };
+xsBook = function (k, ex) { ex = ex || exCur(); const t = prvTool(k, ex); t.xs ||= {}; const sheets = xsPolish(XS_MODELS[k](ex, t)); try { xsApplyOv(sheets, k, t); } catch (e) { logErr("feuille perso", e); } return new XBook(sheets, t.xs); };
 const XS_STL = [["", "Inchangé"], ["lbl", "Texte normal"], ["lb", "Texte gras"], ["sec", "Titre de rubrique"], ["h", "En-tête de colonne"], ["c", "Calcul"], ["i", "Saisie"], ["g", "Résultat"], ["o", "Résultat mis en avant"], ["tot", "Total"], ["note", "Note"], ["ban", "Bandeau"]];
 const XS_FMT = [["", "Inchangé"], ["n", "Nombre 2 décimales"], ["n0", "Nombre entier"], ["p", "Pourcentage"], ["d", "Date"], ["t", "Texte"], ["-", "Automatique"]];
 function xsCellOpen(td) { const k = td.dataset.xk, si = +td.dataset.xs, ref = td.dataset.xr; const book = xsBook(k); const sh = book.sheets[si]; if (!sh) return; const c = sh.cells[ref]; const t = prvTool(k);
