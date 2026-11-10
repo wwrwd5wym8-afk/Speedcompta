@@ -3,7 +3,7 @@
    Banque, Fiscalité, Emprunts, Immobilisations, Rapports, Clôture, FEC.
    Chaque espace a ses onglets en haut de page et un onglet ⚙ Paramétrer.
    ============================================================ */
-const jByType = (t, def) => (S.journaux.find(j => j.type === t) || {}).code || def;
+const jByType = (t, def) => (S.journaux.find(j => j.type === t && !j.ferme) || S.journaux.find(j => j.type === t) || {}).code || def;
 function spGrid(type, def) { const g = UI.sub.grid ||= {}; const j = jByType(type, def); if (g.j !== j) Object.assign(g, { j, cur: null, sel: null, nl: null }); }
 function spGL(compte) { const ex = exCur(); UI.sub.consult = Object.assign({ tab: "gl", compte: "", aux: "", from: ex.debut, to: ex.fin, open: false, bal: "G", journal: "" }, UI.sub.consult || {}, { tab: "gl", compte, aux: "" }); }
 const SPACES = {
