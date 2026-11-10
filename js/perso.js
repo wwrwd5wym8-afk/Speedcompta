@@ -24,7 +24,7 @@ function xsCellOpen(td) { const k = td.dataset.xk, si = +td.dataset.xs, ref = td
   const ovD = ((t.xsOv || {})[sh.name] || {})[ref], ovG = ((((psRoot().xsOv || {})[k]) || {})[sh.name] || {})[ref];
   const cur = !c ? "" : c.f ? c.f : c.in && c.id && book.store[c.id] !== undefined ? book.store[c.id] : c.v ?? ""; const val = c ? book.val(sh, ref) : "";
   openModal({ type: "xsCell", k, sn: sh.name, ref, cur: String(cur), val, isIn: !!(c && c.in), st: c && c.st || "", hasOv: !!(ovD || ovG), ovD: !!ovD, ovG: !!ovG }); }
-function xsOvSet(M, ov, scope) { if (scope === "tous" && isAdmin()) { const R = psRootW(); const A = ((R.xsOv ||= {})[M.k] ||= {})[M.sn] ||= {}; if (ov) A[M.ref] = ov; else delete A[M.ref]; toast("Modifié pour tous les dossiers : publiez le paramétrage pour l'appliquer aux utilisateurs."); }
+function xsOvSet(M, ov, scope) { if (scope === "tous" && isAdmin()) { const R = psRootW(); const A = ((R.xsOv ||= {})[M.k] ||= {})[M.sn] ||= {}; if (ov) A[M.ref] = ov; else delete A[M.ref]; toast("Modifié pour tous les dossiers ✓"); }
   else { const t = prvTool(M.k); const A = (t.xsOv ||= {})[M.sn] ||= {}; if (ov) A[M.ref] = ov; else delete A[M.ref]; Store.touch(); } }
 
 /* ---------- 2. documents : relecture avant export ---------- */
@@ -57,7 +57,7 @@ function psBarSrc() { const L = [];
   if (typeof PP_BAR !== "undefined") Object.keys(PP_BAR).forEach(n => L.push({ id: "pp:" + n, grp: "Conseil aux particuliers", lib: PP_BAR[n].lib || n, maj: PP_BAR[n].maj, get: () => ppBar(n), def: () => PP_BAR[n], set: v => ppBarSave(n, v) }));
   const P2 = [["txcc", "Taux maximum des intérêts de comptes courants (art. 39-1-3° CGI)", () => P2_TXCC], ["ik", "Barème kilométrique", () => P2_IK], ["tvs", "Taxes sur les véhicules de tourisme", () => typeof P3_TVS !== "undefined" ? P3_TVS : null], ["vplaf", "Plafonds d'amortissement des véhicules", () => typeof P3_VPLAF !== "undefined" ? P3_VPLAF : null]];
   P2.forEach(([n, lib, d]) => { try { if (d()) L.push({ id: "p2:" + n, grp: "Dossier de travail", lib, get: () => p2Bar(n, d()), def: d, set: v => p2BarSave(n, v) }); } catch (e) { } });
-  if (typeof OH_PAYS !== "undefined") L.push({ id: "oh:pays", grp: "Afrique (OHADA)", lib: "Paramètres fiscaux par pays : devise, TVA %, IS %, IMF %, IMF minimum, échéance DSF", cols: ["Devise", "TVA %", "IS %", "IMF %", "IMF minimum", "Échéance DSF"], get: () => Object.assign({}, OH_PAYS, (modStore().ohada || {}).pays || {}), def: () => OH_PAYS, set: v => { if (!isAdmin()) { toast("Les taux par pays se modifient depuis l'espace éditeur. Pour ce dossier : Afrique › Paramètres."); return; } const C = (psRootW().modules ||= {}).ohada ||= {}; C.pays = v; toast("Taux mis à jour : publiez le paramétrage pour l'appliquer à tous."); render(); } });
+  if (typeof OH_PAYS !== "undefined") L.push({ id: "oh:pays", grp: "Afrique (OHADA)", lib: "Paramètres fiscaux par pays : devise, TVA %, IS %, IMF %, IMF minimum, échéance DSF", cols: ["Devise", "TVA %", "IS %", "IMF %", "IMF minimum", "Échéance DSF"], get: () => Object.assign({}, OH_PAYS, (modStore().ohada || {}).pays || {}), def: () => OH_PAYS, set: v => { if (!isAdmin()) { toast("Les taux par pays se modifient depuis l'espace éditeur. Pour ce dossier : Afrique › Paramètres."); return; } const C = (psRootW().modules ||= {}).ohada ||= {}; C.pays = v; CONFIG.modules ||= {}; CONFIG.modules.ohada = deep(C); ADM.save("Taux OHADA par pays").catch(e => toast("Enregistrement impossible : " + ((e && e.message) || e))); toast("Taux mis à jour pour tous les dossiers ✓"); render(); } });
   return L; }
 const psIsScal = v => v == null || typeof v !== "object";
 function psEd(id, path, v, cols) { const P = esc(JSON.stringify(path)); const num = typeof v === "number"; if (psIsScal(v)) return `<input class="in ps-in ${num ? "ps-n" : ""}" data-ch="psBar" data-id="${id}" data-p="${P}" data-num="${num ? 1 : 0}" value="${esc(v == null ? "" : num ? String(v).replace(".", ",") : v)}">`;
@@ -116,3 +116,29 @@ Object.assign(F2CHG, {
 .ps-g{margin:22px 0 8px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#13585A}.ps-list{display:flex;flex-direction:column;gap:8px}.ps-card{overflow:hidden}.ps-hd{all:unset;box-sizing:border-box;width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px;cursor:pointer}.ps-hd small{display:block;color:#6B7A7A;font-size:12px;margin-top:2px}.ps-hd:hover{background:#F6F9F8}.ps-card.on .ps-hd{border-bottom:1px solid #EEF3F2}.ps-mod{font-style:normal;font-size:11px;font-weight:700;background:#FFF4D6;color:#8A5A00;border-radius:999px;padding:2px 9px}.ps-ch{color:#13585A}
 .ps-obj{display:flex;flex-direction:column;gap:6px}.ps-kv{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:10px;align-items:start}.ps-kv>span{font-size:12.5px;color:#3E4D4D;padding-top:7px}.ps-arr{display:flex;flex-wrap:wrap;gap:6px}.ps-arr .ps-in{width:90px}.ps-in{padding:5px 8px;font-size:12.5px}.ps-n{text-align:right;font-variant-numeric:tabular-nums}.ps-gt{width:auto!important;margin-bottom:6px}.ps-gt td,.ps-gt th{padding:3px 4px}.ps-gt .ps-in{width:110px}
 @media (max-width:640px){.ps-kv{grid-template-columns:1fr}}`; document.head.appendChild(st); })();
+
+/* ---------- nom du logiciel : une seule source, enregistrée immédiatement pour tous ---------- */
+const BR_DEF = "SpeedCompta";
+function brNom() { return (CONFIG && CONFIG.branding && String(CONFIG.branding.nom || "").trim()) || BR_DEF; }
+async function brSetNom(v) { v = String(v || "").trim() || BR_DEF; const old = brNom(); CONFIG.branding.nom = v; if (UI.cfg && UI.cfg.branding) UI.cfg.branding.nom = v;
+  [CONFIG, UI.cfg].forEach(R => { const T = R && R.noms && R.noms.textes; if (T) { delete T[BR_DEF]; delete T[old]; } });
+  try { const P = nmPerso(); if (P.textes) { delete P.textes[BR_DEF]; delete P.textes[old]; localStorage.setItem(NM_LS, JSON.stringify(P)); } } catch (e) { }
+  try { if (typeof applyConfig === "function") applyConfig(); } catch (e) { }
+  if (!isAdmin()) { toast("Seul l'éditeur peut changer le nom du logiciel (Administration › Identité)."); render(); return; }
+  try { await ADM.save("Nom du logiciel : " + v); toast("Nom du logiciel enregistré : « " + v + " », pour tous les utilisateurs et les deux versions."); } catch (e) { toast("Enregistrement impossible : " + ((e && e.message) || e)); } render(); }
+/* nom affiché partout, y compris dans les textes qui citaient l'ancien nom */
+function brApply() { const n = brNom(); if (n === BR_DEF) return; const re = /SpeedCompta/g; try { if (document.title.includes(BR_DEF)) document.title = document.title.replace(re, n); } catch (e) { } const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, { acceptNode: x => x.nodeValue.indexOf(BR_DEF) >= 0 && !(x.parentNode && /^(SCRIPT|STYLE|TEXTAREA)$/.test(x.parentNode.nodeName)) ? 1 : 3 }); const L = []; while (w.nextNode()) L.push(w.currentNode); L.forEach(x => { x.nodeValue = x.nodeValue.replace(re, n); });
+  document.querySelectorAll("[title*='SpeedCompta'],[placeholder*='SpeedCompta']").forEach(e => { ["title", "placeholder"].forEach(a => { const v = e.getAttribute(a); if (v && v.includes(BR_DEF)) e.setAttribute(a, v.replace(re, n)); }); }); }
+(function () { const _m = modAfterRender; modAfterRender = function () { const r = _m.apply(this, arguments); try { brApply(); } catch (e) { } return r; }; })();
+/* « ✎ Modifier » sur le nom du logiciel → change le nom officiel (enregistré tout de suite) */
+(function () { const _s = nmSet; nmSet = function (orig, val) { const o = String(orig || "").trim(); if (o && (o === brNom() || o === BR_DEF)) { brSetNom(val); return; } const r = _s.apply(this, arguments); psAuto("noms", "Dénominations"); return r; };
+  const _h = nmHide; nmHide = function () { const r = _h.apply(this, arguments); psAuto("noms", "Éléments masqués"); return r; };
+  const _x = xsOvSet; xsOvSet = function (M, ov, scope) { const r = _x.apply(this, arguments); if (scope === "tous") psAuto("xsOv", "Feuille de travail " + M.k + " · " + M.ref); return r; };
+  /* champ « Nom du logiciel » de l'administration : enregistré immédiatement */
+  const _c = ACHG.cfg; ACHG.cfg = function (el) { if (el.dataset.p === "branding.nom") { brSetNom(el.value); return; } return _c.apply(this, arguments); }; })();
+/* les changements faits par l'éditeur (dénominations, éléments masqués, cellules pour tous) sont enregistrés aussitôt :
+   plus besoin de « Publier », ils ne reviennent plus à l'origine après rechargement */
+let PS_AUTO_T = null;
+function psAuto(key, note) { if (!isAdmin() || !UI.cfg) return; CONFIG[key] = deep(UI.cfg[key] || {}); clearTimeout(PS_AUTO_T); PS_AUTO_T = setTimeout(async () => { try { await ADM.save(note || "Personnalisation"); } catch (e) { toast("Enregistrement impossible : " + ((e && e.message) || e)); } }, 600); }
+/* documents exportés : l'ancien nom est remplacé aussi */
+(function () { const _a = psDocApply; psDocApply = function (blocks) { const B = _a.apply(this, arguments); const n = brNom(); if (n === BR_DEF) return B; const r = s => typeof s === "string" ? s.replace(/SpeedCompta/g, n) : s; return (B || []).map(b => { if (!b) return b; const x = Object.assign({}, b); ["text", "title", "sub"].forEach(f => { if (f in x) x[f] = r(x[f]); }); if (x.head) x.head = x.head.map(r); if (x.rows) x.rows = x.rows.map(row => Array.isArray(row) ? row.map(r) : row && row.cells ? Object.assign({}, row, { cells: row.cells.map(r) }) : row); return x; }); }; })();

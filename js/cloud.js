@@ -49,7 +49,7 @@
   window.SC_DB = DB;
 
   /* ---------------- écran de connexion ---------------- */
-  const nom = () => "SpeedCompta";
+  const nom = () => (typeof CONFIG !== "undefined" && CONFIG && CONFIG.branding && CONFIG.branding.nom) || (() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || "SpeedCompta"; } catch (e) { return "SpeedCompta"; } })();
   const ico = () => (window.SCLOGO ? SCLOGO.iconURL() : "");
   function errFr(e) { const m = String((e && e.message) || e || "");
     if (/SC_BAD_CODE/i.test(m)) return "E-mail ou code d'accès incorrect.";
@@ -173,7 +173,7 @@
     Store.user = { id: async () => u.id, isOwner: async () => { if (ed === null) { try { ed = !!(await rest("rpc/sc_is_editor", { method: "POST", body: "{}" })); } catch (e) { ed = false; } } return ed; },
       me: async () => ({ id: u.id, name: (u.email || "").split("@")[0], email: u.email }), profiles: async () => ({}) };
     UI.userEmail = u.email;
-    const app = document.getElementById("app"); if (app) app.innerHTML = `<div style="padding:40px;font-weight:800;font-size:22px">SpeedCompta<div class="muted" style="font-weight:400;font-size:14px;margin-top:6px" id="bootStep">Ouverture de votre espace…</div></div>`;
+    const app = document.getElementById("app"); if (app) app.innerHTML = `<div style="padding:40px;font-weight:800;font-size:22px">${(() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || "SpeedCompta"; } catch (e) { return "SpeedCompta"; } })()}<div class="muted" style="font-weight:400;font-size:14px;margin-top:6px" id="bootStep">Ouverture de votre espace…</div></div>`;
   };
   /* compte sans invitation valide : en attente plutôt qu'accès libre */
   const _la = loadAccess;

@@ -20,7 +20,7 @@ document.addEventListener("visibilitychange", async () => {
 });
 window.addEventListener("pagehide", sesMark);
 async function sesReturnHome() {
-  let ov = document.getElementById("sesOv"); if (!ov) { ov = document.createElement("div"); ov.id = "sesOv"; ov.className = "ses-ov"; ov.innerHTML = `<div class="ses-box"><span class="iain-spin"></span><b>Actualisation de SpeedCompta…</b><small>Vous étiez absent depuis plus de 2 minutes : retour à l'accueil avec les données à jour.</small></div>`; document.body.appendChild(ov); }
+  let ov = document.getElementById("sesOv"); if (!ov) { ov = document.createElement("div"); ov.id = "sesOv"; ov.className = "ses-ov"; ov.innerHTML = `<div class="ses-box"><span class="iain-spin"></span><b>Actualisation de ${(typeof CONFIG !== "undefined" && CONFIG && CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta"}…</b><small>Vous étiez absent depuis plus de 2 minutes : retour à l'accueil avec les données à jour.</small></div>`; document.body.appendChild(ov); }
   try { await Store.flush(); } catch (e) { }
   try { localStorage.removeItem("sc:view"); } catch (e) { } sesMark();
   try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { }

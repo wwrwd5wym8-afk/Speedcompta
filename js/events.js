@@ -351,7 +351,7 @@ function fatal(e) { console.error(e); logErr("démarrage", e); const msg = (e &&
 window.addEventListener("error", ev => { logErr("erreur", ev.error || ev.message); if (!S) fatal(ev.error || ev.message); });
 window.addEventListener("unhandledrejection", ev => logErr("promesse", ev.reason));
 async function boot() {
-  $("#app").innerHTML = `<div style="padding:40px;font-family:var(--f-display);font-weight:800;font-size:22px">${"SpeedCompta"}<div class="muted" style="font-family:var(--f-body);font-weight:400;font-size:14px;margin-top:6px" id="bootStep">Connexion…</div></div>`;
+  $("#app").innerHTML = `<div style="padding:40px;font-family:var(--f-display);font-weight:800;font-size:22px">${(() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || "SpeedCompta"; } catch (e) { return "SpeedCompta"; } })()}<div class="muted" style="font-family:var(--f-body);font-weight:400;font-size:14px;margin-top:6px" id="bootStep">Connexion…</div></div>`;
   try {
     await (Store.gate ? Store.gate() : withTO(Store.init(), 12000, null));
     bootMsg("Chargement de la configuration…"); await withTO(ADM.load(), 8000, null); if (!CONFIG) CONFIG = DEFAULT_CONFIG(); applyConfig();
