@@ -8,7 +8,7 @@ const REV_CYCLES = [
   ["DIV", "Débiteurs et créditeurs divers, régularisations", ["46", "47", "48", "49"]], ["TRE", "Trésorerie", ["5"]], ["CHG", "Charges", ["6"]], ["PRO", "Produits", ["7"]], ["AUT", "Autres comptes", ["8", "9"]]
 ];
 const REV_ST = { "": ["n", "À réviser"], encours: ["warn", "En cours"], valide: ["ok", "Validé"], anomalie: ["bad", "Anomalie"], so: ["n", "Sans objet"] };
-const cycleOf = c => (REV_CYCLES.find(([, , p]) => p.some(x => c.startsWith(x))) || REV_CYCLES[REV_CYCLES.length - 1])[0];
+const cycleOf = c => { let k = null, lg = -1; for (const [id, , p] of REV_CYCLES) for (const x of p) if (c.startsWith(x) && x.length > lg) { lg = x.length; k = id; } return k || REV_CYCLES[REV_CYCLES.length - 1][0]; };
 function revStore(ex) { const R = S.revision ||= {}; const x = R[ex.id] ||= { comptes: {}, cycles: {} }; x.comptes ||= {}; x.cycles ||= {}; return x; }
 function revCfg() { return S.revCfg || { seuilPct: MC("compta", "seuilPct") ?? 20, seuilMt: Math.round((MC("compta", "seuilMt") ?? 1000) * 100) }; }
 function revRows(ex) {

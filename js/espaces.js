@@ -10,7 +10,7 @@ const SPACES = {
   jrn: { lib: "Vue d'ensemble", mod: "compta", tabs: [
     ["compta", "Tableau de bord"], ["consult", "Synthèse des journaux & saisie", () => spCons("jrn"), () => consTab() === "jrn" || UI.view === "grille" || UI.view === "saisie", ["grille", "saisie"]],
     ["consult", "Grand livre", () => spCons("gl"), () => consTab() === "gl"], ["balrev", "Balance générale", () => spBr("gen"), () => brType() === "gen"],
-    ["plan", "Plan comptable"], ["paramCompta", "Paramétrage des journaux et comptes", () => { UI.sub.pc = { tab: "jrn", q: "" }; }]] },
+    ["plan", "Plan comptable"], ["paramCompta", "Paramétrage comptable", () => { UI.sub.pc = { tab: "reg", q: "" }; }]] },
   cli: { lib: "Clients", mod: "factu", tabs: [
     ["cptCli", "Vue d'ensemble"], ["ventes", "Factures et devis"], ["grille", "Saisie des ventes", () => spGrid("VEN", "VT"), () => gType() === "VEN"],
     ["factu", "Encaissements et relances"], ["consult", "Grand livre clients", () => spGL(collC()), () => consTab() === "gl" && String((UI.sub.consult || {}).compte).startsWith("41")],
@@ -21,7 +21,7 @@ const SPACES = {
     ["balrev", "Balance fournisseurs", () => spBr("fou"), () => brType() === "fou"], ["tiers", "Fiches fournisseurs", () => { UI.sub.tiers = Object.assign(UI.sub.tiers || {}, { type: "F" }); }, () => (UI.sub.tiers || {}).type === "F"], ["paCfg", "Import et PA"]] },
   bq: { lib: "Banque", mod: "banque", tabs: [
     ["banque", "Rapprochement bancaire"], ["attente", "Opérations à affecter"], ["grille", "Saisie banque", () => spGrid("BQ", "BQ"), () => gType() === "BQ"], ["bqParam", "Import des relevés et télécollecte", () => { UI.sub.pc = { tab: "bq", q: "" }; }, () => (UI.sub.pc || {}).tab === "bq"],
-    ["bqParam", "Règles de comptabilisation", () => { UI.sub.pc = { tab: "reg", q: "" }; }, () => (UI.sub.pc || {}).tab === "reg"], ["consult", "Grand livre banque", () => spGL((S.banques && S.banques[0] && S.banques[0].compte) || "512000"), () => consTab() === "gl" && String((UI.sub.consult || {}).compte).startsWith("5")]] },
+    ["bqParam", "Règles de comptabilisation", () => { UI.sub.pc = { tab: "reg2", q: "" }; }, () => (UI.sub.pc || {}).tab === "reg2"], ["consult", "Grand livre banque", () => spGL((S.banques && S.banques[0] && S.banques[0].compte) || "512000"), () => consTab() === "gl" && String((UI.sub.consult || {}).compte).startsWith("5")]] },
   fisc: { lib: "Fiscalité", mod: "tva", tabs: [["tva", "Déclarations de TVA"], ["is", "Impôt sur les sociétés"], ["echeances", "Échéances fiscales"]] },
   emp: { lib: "Emprunts", mod: "compta", tabs: [["emprunts", "Emprunts"]] },
   immo: { lib: "Immobilisations", mod: "compta", tabs: [["immos", "Immobilisations"], ["immoImp", "Import des immobilisations"]] },
