@@ -1,0 +1,36 @@
+/* ============================================================
+   Paramètres › Dossiers supprimés : la suppression d'une société la place dans une corbeille
+   (données conservées) avec la date, l'heure et l'auteur. Réouverture en un clic ou
+   suppression définitive. Les dossiers de démonstration sont supprimés directement.
+   ============================================================ */
+function cbList() { INDEX.corbeille ||= []; return INDEX.corbeille; }
+(function () { const _del = Store.deleteDossier.bind(Store); Store._delDef = _del;
+  Store.deleteDossier = async function (id) { const x = (INDEX.dossiers || []).find(d => d.id === id); if (!x || x.demo || /d[ée]monstration/i.test(x.nom || "")) return _del(id);
+    try { await Store.flush(); } catch (e) { }
+    let sum = x.sum || {}; try { if (S && S.id === id) sum = Object.assign({}, sum, dossierSummary()); } catch (e) { }
+    let who = ""; try { who = typeof xsMe === "function" ? xsMe() : prvMe(); } catch (e) { }
+    const L = cbList().filter(c => c.id !== id); L.unshift({ id, nom: x.nom, entry: deep(x), siren: sum.siren || "", forme: sum.forme || "", ex: sum.ex || "", nEcr: sum.nEcr != null ? sum.nEcr : (S && S.id === id ? E.length : null), at: new Date().toISOString(), by: who || UI.userName || "Utilisateur" }); INDEX.corbeille = L; }; })();
+async function cbRestore(id, open) { const L = cbList(); const c = L.find(x => x.id === id); if (!c) return; const r = await Store.loadDossier(id); if (!r) { toast("Les données de ce dossier sont introuvables : il a peut-être été supprimé définitivement ailleurs."); return; }
+  INDEX.corbeille = L.filter(x => x.id !== id); INDEX.dossiers = (INDEX.dossiers || []).filter(d => d.id !== id); INDEX.dossiers.push(Object.assign({}, c.entry || { id, nom: c.nom }, { restoredAt: new Date().toISOString() }));
+  if (open) { try { await Store.flush(); } catch (e) { } setDossier(r.meta, r.ecr); INDEX.current = id; await saveIndex(); go("dashboard"); toast("« " + c.nom + " » réouvert : toutes ses données sont restaurées."); }
+  else { await Store.setIndex(INDEX); render(); toast("« " + c.nom + " » restauré dans Mes sociétés."); } }
+const cbDT = iso => { const d = new Date(iso); return frDate(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0")) + " à " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+VIEWS.corbeille = () => { const L = cbList(); const q = ((UI.sub.cb || {}).q || "").toLowerCase(); const F = L.filter(c => !q || (c.nom + " " + c.siren + " " + c.by).toLowerCase().includes(q));
+  const ago = iso => { const j = Math.floor((Date.now() - new Date(iso)) / 864e5); return j < 1 ? "aujourd'hui" : j === 1 ? "hier" : "il y a " + j + " jours"; };
+  return `<div class="pg-h"><div><div class="eyebrow">Paramètres</div><h1>Dossiers supprimés</h1><p class="lead">Les sociétés supprimées sont conservées ici avec toutes leurs données. Réouvrez-les à tout moment ou supprimez-les définitivement.</p></div>${L.length ? `<div class="row"><input class="in" style="width:240px" placeholder="🔎 Société, SIREN, auteur" value="${esc((UI.sub.cb || {}).q || "")}" data-ch="cbQ"></div>` : ""}</div>
+  <section class="panel"><div class="tw"><table class="t cb-t"><thead><tr><th>Société</th><th style="width:190px">Supprimée le</th><th style="width:200px">Par</th><th style="width:110px" class="r">Écritures</th><th style="width:330px"></th></tr></thead><tbody>
+  ${F.map(c => `<tr><td><div class="cb-n"><span class="cb-av">${esc(initials(c.nom || "?"))}</span><div><b>${esc(c.nom)}</b><small>${[c.forme, c.siren, c.ex ? "dernier exercice " + esc(String(c.ex).replace("EX", "")) : ""].filter(Boolean).map(esc).join(" · ")}</small></div></div></td><td class="mono small">${cbDT(c.at)}<br><span class="muted">${ago(c.at)}</span></td><td><span class="eh-u">${esc((c.by || "?").split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase())}</span>${esc(c.by)}</td><td class="r mono">${c.nEcr != null ? c.nEcr : "—"}</td>
+    <td class="r nw"><button class="btn sm pri" data-act="cbOpen" data-id="${c.id}">↗ Réouvrir</button> <button class="btn sm" data-act="cbRest" data-id="${c.id}" title="Remettre dans Mes sociétés sans l'ouvrir">↺ Restaurer</button> <button class="btn sm ghost danger" data-act="cbDel" data-id="${c.id}">Supprimer définitivement</button></td></tr>`).join("") || `<tr><td colspan="5" class="empty">${L.length ? "Aucun dossier ne correspond." : "Aucun dossier supprimé. Quand vous supprimez une société, elle arrive ici et peut être réouverte."}</td></tr>`}</tbody></table></div>
+  ${L.length > 1 ? `<div class="card-b" style="display:flex;justify-content:flex-end"><button class="btn sm ghost danger" data-act="cbEmpty">Vider la corbeille (${L.length})</button></div>` : ""}</section>`; };
+Object.assign(F2ACT, {
+  cbOpen: el => cbRestore(el.dataset.id, true),
+  cbRest: el => cbRestore(el.dataset.id, false),
+  cbDel: el => { const c = cbList().find(x => x.id === el.dataset.id); if (!c) return; confirmBox("Suppression définitive", `Le dossier <b>${esc(c.nom)}</b> et toutes ses écritures seront effacés <b>définitivement</b>. Cette action est irréversible.`, "Supprimer définitivement", async () => { await Store._delDef(c.id); INDEX.corbeille = cbList().filter(x => x.id !== c.id); await Store.setIndex(INDEX); render(); toast("« " + c.nom + " » supprimé définitivement."); }, true); },
+  cbEmpty: () => { const L = cbList(); confirmBox("Vider la corbeille", `Les <b>${L.length}</b> dossiers supprimés seront effacés <b>définitivement</b>. Cette action est irréversible.`, "Tout supprimer définitivement", async () => { for (const c of L) { try { await Store._delDef(c.id); } catch (e) { } } INDEX.corbeille = []; await Store.setIndex(INDEX); render(); toast("Corbeille vidée."); }, true); }
+});
+Object.assign(F2CHG, { cbQ: el => { (UI.sub.cb ||= {}).q = el.value; render(); } });
+/* textes de confirmation : la suppression n'est plus définitive */
+(function () { const _cb = confirmBox; confirmBox = function (t, msg, btn, fn, danger) { if (/^Supprimer (la société|ce dossier)$/.test(t) && typeof msg === "string") { msg = msg.replace(/seront effacés définitivement\.?/, "seront placés dans les <b>dossiers supprimés</b> (Paramètres) : vous pourrez le réouvrir à tout moment.").replace(" Exportez une sauvegarde avant si besoin.", ""); btn = "Supprimer"; } return _cb.call(this, t, msg, btn, fn, danger); }; })();
+/* entrée dans Paramètres */
+(function () { const N = NAV2.find(n => n[0] === "params"); if (N) { if (!N[2].includes("corbeille")) N[2].push("corbeille"); N[3] = (N[3] || []).filter(s => s[0] !== "corbeille").concat([["corbeille", "Dossiers supprimés"]]); } MOD_DEFS.corbeille = { lib: "Dossiers supprimés", files: ["corbeille.js"], links: [], set: [] }; })();
+(function () { const st = document.createElement("style"); st.textContent = `.cb-t td{vertical-align:middle}.cb-t td.nw{white-space:nowrap}.cb-n{display:flex;gap:10px;align-items:center}.cb-n small{display:block;color:#6B7A7A;font-size:12px}.cb-av{width:34px;height:34px;border-radius:10px;background:#E8F1F0;color:#0F3D3E;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex:none}`; document.head.appendChild(st); })();
