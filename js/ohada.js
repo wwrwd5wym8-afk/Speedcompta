@@ -23,7 +23,7 @@ const SYSCO_RAW = `10 Capital|101 Capital social|1011 Capital souscrit, non appe
 const SYSCO = {}; SYSCO_RAW.replace(/\n/g, "").split("|").forEach(x => { const i = x.indexOf(" "); if (i > 0) SYSCO[x.slice(0, i).padEnd(6, "0")] = x.slice(i + 1); });
 const isOH = () => !!(S && S.activite === "ohada");
 function ohSt() { const O = S.ohada ||= { pays: "Côte d'Ivoire", systeme: "normal", regime: "reel_normal" }; O.taux ||= {}; return O; }
-function ohPays() { const O = ohSt(); const P = OH_PAYS[O.pays] || OH_PAYS["Côte d'Ivoire"]; const T = O.taux; return { pays: O.pays, dev: P[0], tva: T.tva ?? P[1], is: T.is ?? P[2], imf: T.imf ?? P[3], imfMin: T.imfMin ?? P[4], dsf: T.dsf || P[5] }; }
+function ohPays() { const O = ohSt(); const P = ((modStore().ohada || {}).pays || {})[O.pays] || OH_PAYS[O.pays] || OH_PAYS["Côte d'Ivoire"]; const T = O.taux; return { pays: O.pays, dev: P[0], tva: T.tva ?? P[1], is: T.is ?? P[2], imf: T.imf ?? P[3], imfMin: T.imfMin ?? P[4], dsf: T.dsf || P[5] }; }
 const ohDev = () => OH_DEVL[ohPays().dev] || ohPays().dev;
 const ohM = c => { const d = ohPays().dev; const v = (c || 0) / 100; return (["XOF", "XAF", "GNF", "KMF", "CDF"].includes(d) ? Math.round(v).toLocaleString("fr-FR") : v.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + " " + ohDev(); };
 const ohN = c => { const v = Math.round((c || 0) / 100); return v ? v.toLocaleString("fr-FR") : "-"; };
