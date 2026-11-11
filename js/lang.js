@@ -164,6 +164,19 @@ TVA & impôts|VAT & taxes|IVA e impuestos|USt. & Steuern|IVA e imposte
 Rapports|Reports|Informes|Berichte|Report
 Formation|Training|Formación|Schulung|Formazione
 Coffre-fort documentaire|Document vault|Archivo documental|Dokumententresor|Archivio documenti
+GED|DMS|Gestión documental|DMS|Gestione documentale
+Explorateur de documents|Document explorer|Explorador de documentos|Dokumenten-Explorer|Esplora documenti
+Dossier client|Client folder|Carpeta del cliente|Mandantenordner|Cartella cliente
+Accès rapide|Quick access|Acceso rápido|Schnellzugriff|Accesso rapido
+Récents|Recent|Recientes|Zuletzt verwendet|Recenti
+Corbeille|Recycle bin|Papelera|Papierkorb|Cestino
+Documents générés|Generated documents|Documentos generados|Erzeugte Dokumente|Documenti generati
+Modifié le|Date modified|Fecha de modificación|Änderungsdatum|Ultima modifica
+Taille|Size|Tamaño|Größe|Dimensione
+Statut|Status|Estado|Status|Stato
+Trier|Sort|Ordenar|Sortieren|Ordina
+Afficher|View|Ver|Ansicht|Visualizza
+Détails|Details|Detalles|Details|Dettagli
 Contrôle de gestion|Management control|Control de gestión|Controlling|Controllo di gestione
 Gestion d'entreprise|Business management|Gestión empresarial|Unternehmensführung|Gestione aziendale
 Gestion du patrimoine|Wealth management|Gestión patrimonial|Vermögensverwaltung|Gestione patrimoniale
