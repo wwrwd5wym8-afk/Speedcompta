@@ -1,31 +1,27 @@
 /* ============================================================
-   1. Reprise de session : si l'utilisateur revient moins de 2 minutes
-      après avoir quitté SpeedCompta, il retrouve sa dernière tâche ;
-      au-delà, l'application se recharge et revient à l'accueil.
+   1. Déconnexion automatique après 2 heures d'inactivité.
    2. Mes sociétés : choix de l'exercice (en cours / clôturés) sur chaque carte.
    ============================================================ */
-const SES_MAX = 2 * 60 * 1000;
-const sesSeen = () => { try { return Number(localStorage.getItem("sc:seen")) || 0; } catch (e) { return 0; } };
-const sesMark = () => { try { localStorage.setItem("sc:seen", String(Date.now())); } catch (e) { } };
-(function () { /* au démarrage (avant boot) : absence trop longue => accueil */
-  const last = sesSeen(); if (last && Date.now() - last > SES_MAX) { try { localStorage.removeItem("sc:view"); } catch (e) { } try { if (location.hash) history.replaceState(null, "", location.pathname + location.search); } catch (e) { } UI.view = "dashboard"; UI.space = ""; }
-  sesMark();
-})();
-let sesHiddenAt = 0;
-setInterval(() => { if (document.visibilityState === "visible") sesMark(); }, 20000);
-document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState === "hidden") { sesHiddenAt = Date.now(); sesMark(); try { await Store.flush(); } catch (e) { } return; }
-  const away = Date.now() - (sesHiddenAt || sesSeen()); sesHiddenAt = 0;
-  if (away > SES_MAX && window.__SC_READY) { sesReturnHome(); return; } sesMark();
-});
-window.addEventListener("pagehide", sesMark);
-async function sesReturnHome() {
-  let ov = document.getElementById("sesOv"); if (!ov) { ov = document.createElement("div"); ov.id = "sesOv"; ov.className = "ses-ov"; ov.innerHTML = `<div class="ses-box"><span class="iain-spin"></span><b>Actualisation de ${(typeof CONFIG !== "undefined" && CONFIG && CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta"}…</b><small>Vous étiez absent depuis plus de 2 minutes : retour à l'accueil avec les données à jour.</small></div>`; document.body.appendChild(ov); }
-  try { await Store.flush(); } catch (e) { }
-  try { localStorage.removeItem("sc:view"); } catch (e) { } sesMark();
-  try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { }
-  setTimeout(() => { try { location.reload(); } catch (e) { ov.remove(); UI.modal = null; go("dashboard"); } }, 600);
-}
+/* Déconnexion automatique après 2 heures d'inactivité : sur le site, la session est fermée et
+   le mot de passe est redemandé ; dans l'artefact, l'application se verrouille.
+   (L'ancien retour automatique à l'accueil après 2 minutes d'absence est supprimé.) */
+const SES_MAX = 2 * 60 * 60 * 1000, SES_WARN = 60 * 1000;
+const sesSeen = () => { try { return Number(localStorage.getItem("sc:act")) || 0; } catch (e) { return 0; } };
+let sesLastW = 0; const sesMark = () => { const n = Date.now(); if (n - sesLastW < 5000) return; sesLastW = n; try { localStorage.setItem("sc:act", String(n)); } catch (e) { } const w = document.getElementById("sesWarn"); if (w) w.remove(); };
+let sesOff = false;
+let sesTry = 0; async function sesExpire() { if (sesOff) return; if (window.SC_CLOUD_ON && !window.SC_LOGOUT && sesTry++ < 40) { setTimeout(sesExpire, 300); return; } sesOff = true; try { await Store.flush(); } catch (e) { } try { localStorage.removeItem("sc:act"); localStorage.removeItem("sc:view"); } catch (e) { }
+  if (window.SC_LOGOUT) { try { sessionStorage.setItem("sc:expired", "1"); } catch (e) { } window.SC_LOGOUT(); return; }
+  let ov = document.getElementById("sesOv"); if (!ov) { ov = document.createElement("div"); ov.id = "sesOv"; ov.className = "ses-ov"; document.body.appendChild(ov); }
+  ov.innerHTML = `<div class="ses-box"><b>🔒 Session verrouillée</b><small>Vous êtes resté inactif plus de 2 heures : par sécurité, l'application a été verrouillée.</small><button class="btn pri" id="sesBack" style="margin-top:12px">Se reconnecter</button></div>`;
+  ov.querySelector("#sesBack").onclick = () => { try { localStorage.setItem("sc:act", String(Date.now())); history.replaceState(null, "", location.pathname + location.search); } catch (e) { } location.reload(); }; }
+function sesCheck() { if (sesOff) return; const last = sesSeen(); if (!last) { sesMark(); return; } const idle = Date.now() - last;
+  if (idle >= SES_MAX) { sesExpire(); return; }
+  if (idle >= SES_MAX - SES_WARN && !document.getElementById("sesWarn")) { const w = document.createElement("div"); w.id = "sesWarn"; w.className = "ses-warn"; w.innerHTML = `<span>⏱ Déconnexion automatique dans moins d'une minute pour inactivité.</span><button class="btn sm pri">Rester connecté</button>`; w.querySelector("button").onclick = () => { sesLastW = 0; sesMark(); }; document.body.appendChild(w); } }
+(function () { const last = sesSeen(); if (last && Date.now() - last > SES_MAX) { try { localStorage.removeItem("sc:view"); } catch (e) { } UI.view = "dashboard"; UI.space = ""; setTimeout(sesExpire, window.SC_LOGOUT ? 0 : 50); } else sesMark();
+  ["pointerdown", "keydown", "wheel", "touchstart", "mousemove"].forEach(ev => document.addEventListener(ev, () => { if (!sesOff) sesMark(); }, { passive: true, capture: true }));
+  setInterval(sesCheck, 20000); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sesCheck(); else { try { Store.flush(); } catch (e) { } } });
+  const st = document.createElement("style"); st.textContent = `.ses-warn{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:10001;display:flex;gap:12px;align-items:center;background:#0F3D3E;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.25);font-size:13px}`; document.head.appendChild(st);
+  try { if (sessionStorage.getItem("sc:expired")) { sessionStorage.removeItem("sc:expired"); setTimeout(() => { try { toast("Session expirée après 2 heures d'inactivité : reconnectez-vous."); } catch (e) { } }, 1500); } } catch (e) { } })();
 
 /* ---------------- Mes sociétés : exercices ---------------- */
 const _dsSumX = dossierSummary;
