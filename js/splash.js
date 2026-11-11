@@ -46,7 +46,7 @@
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function rgba(hex, a) { var h = String(hex || "").replace("#", ""); if (h.length === 3) h = h.replace(/./g, "$&$&"); if (!/^[0-9a-f]{6}$/i.test(h)) return "rgba(245,183,0," + a + ")"; return "rgba(" + parseInt(h.slice(0, 2), 16) + "," + parseInt(h.slice(2, 4), 16) + "," + parseInt(h.slice(4, 6), 16) + "," + a + ")"; }
-  function parts(n) { var m = String(n || "SpeedCompta").match(/^([A-ZÀ-Ü]?[a-zà-ÿ]+)\s*([A-ZÀ-Ü].*)$/); return m ? [m[1], m[2]] : [n || "SpeedCompta", ""]; }
+  function parts(n) { var m = String(n || "Speedix").match(/^([A-ZÀ-Ü]?[a-zà-ÿ]+)\s*([A-ZÀ-Ü].*)$/); return m ? [m[1], m[2]] : [n || "Speedix", ""]; }
 
   /* joue l'animation ; done() est appelé quand elle disparaît. waitReady : attendre que le logiciel soit affiché */
   window.SC_SPLASH = function (opt) {

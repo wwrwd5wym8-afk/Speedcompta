@@ -23,7 +23,7 @@ if (window.SC_CLOUD_ON) (function () {
   welHTML = function () {
     if (UI._welcome === "preview") { const ico = window.SCLOGO ? SCLOGO.iconURL() : "";
       return `<div class="wel"><div class="wel-prev">👁 <b>Aperçu</b> : voici ce que voit votre client en ouvrant votre lien. <button class="btn sm" data-act="welBack">⟵ Revenir à l'Espace éditeur</button> <button class="btn sm" onclick="SC_INTRO&&SC_INTRO()">▶ Revoir le message de bienvenue</button></div>
-      <div class="cl-wrap" style="min-height:auto;padding:24px 0"><div class="cl-card"><div class="cl-brand"><img src="${ico}" alt="" width="56" height="56"><div><b>Speed<i>Compta</i></b><span>Simple · Rapide · Efficace</span></div></div>
+      <div class="cl-wrap" style="min-height:auto;padding:24px 0"><div class="cl-card"><div class="cl-brand"><img src="${ico}" alt="" width="56" height="56"><div><b>${(() => { const n = String((typeof nom === "function" ? nom() : "") || (() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || ""; } catch (e) { return ""; } })() || (typeof CONFIG !== "undefined" && CONFIG && CONFIG.branding && CONFIG.branding.nom) || "Speedix"); const m = n.match(/^([A-ZÀ-Ü]?[a-zà-ÿ]+)([A-ZÀ-Ü].*)$/); return m ? m[1].replace(/[<&]/g, "") + "<i>" + m[2].replace(/[<&]/g, "") + "</i>" : n.replace(/[<&]/g, ""); })()}</b><span>Simple · Rapide · Efficace</span></div></div>
       <h1>Connexion</h1><label>Adresse e-mail<input disabled placeholder="email-du-client@exemple.fr"></label><label>Code d'accès ou mot de passe<input disabled placeholder="SC-XXX-XXXX-XXXX"></label>
       <button class="cl-btn" type="button" disabled>Se connecter</button><p class="cl-sub" style="margin-top:12px">Client : saisissez l'e-mail et le <b>code d'accès</b> reçus de votre cabinet.</p></div></div>
       <div class="panel" style="padding:16px;max-width:560px;margin:0 auto"><b>Ensuite</b><ol class="small" style="line-height:1.8;margin:6px 0 0">
@@ -36,7 +36,7 @@ if (window.SC_CLOUD_ON) (function () {
       <p><a href="#" onclick="SC_LOGOUT();return false">Se déconnecter</a></p></div>`; };
 
   /* ---------- message et fenêtre de fin : e-mail + code ---------- */
-  licMessage = function (l, code) { const V = venteCfg(); const o = V.offres.find(x => x.id === l.offre) || {}; const nom = (CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta";
+  licMessage = function (l, code) { const V = venteCfg(); const o = V.offres.find(x => x.id === l.offre) || {}; const nom = (CONFIG.branding && CONFIG.branding.nom) || "Speedix";
     const c = code || (UI.licCodes || {})[l.id] || "[votre code]"; const link = location.href.split("#")[0].split("?")[0];
     return { sujet: "Votre accès " + nom, corps: `Bonjour${l.client ? " " + l.client : ""},\n\nVotre espace ${nom} est prêt (offre ${o.nom || l.offre}${l.expire ? ", valable jusqu'au " + frDate(l.expire) : ""}).\n\nPour vous connecter :\n1. Ouvrez ${link}\n2. Adresse e-mail : ${l.email || "[votre e-mail]"}\n3. Code d'accès : ${c}\n\nVous arrivez directement dans votre société, avec les fonctionnalités de votre offre. Gardez ce code : il vous sert à chaque connexion.\n\nPour l'installer comme une application :\n- iPhone / iPad : dans Safari, Partager puis « Sur l'écran d'accueil »\n- Mac : dans Safari, menu Fichier puis « Ajouter au Dock » (ou icône d'installation dans Chrome)\n- Android et PC : « Installer l'application » dans le navigateur\n\nBien cordialement,\n${V.societe || nom}${V.email ? "\n" + V.email : ""}${V.tel ? "\n" + V.tel : ""}` }; };
   const _rm = renderModal;
@@ -109,7 +109,7 @@ if (window.SC_CLOUD_ON) (function () {
 
   /* ---------- vitrine : les offres publiées pour l'écran de connexion ---------- */
   async function pubOffres() { if (!isAdmin() || !Store.db) return; try { const V = venteCfg(); const b = CONFIG.branding || {};
-    const doc = { nom: b.nom || "SpeedCompta", slogan: b.slogan || "", actif: V.actif !== false, essai: V.essai || "", email: V.email || "", tel: V.tel || "", societe: V.societe || "",
+    const doc = { nom: b.nom || "Speedix", slogan: b.slogan || "", actif: V.actif !== false, essai: V.essai || "", email: V.email || "", tel: V.tel || "", societe: V.societe || "",
       offres: (V.offres || []).map(o => ({ id: o.id, nom: o.nom, prix: o.prix, periode: o.periode, desc: o.desc || "", inclus: o.inclus || [], top: !!o.top, lien: o.lien || "" })), maj: new Date().toISOString() };
     const raw = Store.rawDb || Store.db; const ref = raw.doc("public/offres"); const s = await ref.get(); const old = s.exists ? plain(s.data()) : null;
     if (!old || JSON.stringify(Object.assign({}, old, { maj: 0 })) !== JSON.stringify(Object.assign({}, doc, { maj: 0 }))) await ref.set(doc); } catch (e) { console.warn("offres", e); } }

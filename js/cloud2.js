@@ -18,7 +18,7 @@ if (window.SC_CLOUD_ON) (function () {
     const r = await _pub.apply(this, arguments); try { await syncInvites(list); } catch (e) { console.warn(e); } return r; };
 
   /* ---------- message au client : lien + première connexion avec son e-mail ---------- */
-  licMessage = function (l) { const V = venteCfg(); const o = V.offres.find(x => x.id === l.offre) || {}; const nom = (CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta";
+  licMessage = function (l) { const V = venteCfg(); const o = V.offres.find(x => x.id === l.offre) || {}; const nom = (CONFIG.branding && CONFIG.branding.nom) || "Speedix";
     return { sujet: "Votre espace " + nom + " est prêt", corps: `Bonjour${l.client ? " " + l.client : ""},\n\nVotre espace ${nom} est prêt (offre ${o.nom || l.offre}${l.expire ? ", valable jusqu'au " + frDate(l.expire) : ""}).\n\n1. Ouvrez ${nom} : ${appLink()}\n2. Touchez « Première connexion ».\n3. Saisissez votre adresse e-mail : ${l.email || "[votre e-mail]"}\n   puis choisissez votre mot de passe.\n\nVous arrivez directement dans votre société, avec les fonctionnalités de votre offre.\n\nPour l'installer comme une application :\n- iPhone : dans Safari, Partager puis « Sur l'écran d'accueil »\n- Android et ordinateur : « Installer l'application »\n\nBien cordialement,\n${V.societe || nom}${V.email ? "\n" + V.email : ""}${V.tel ? "\n" + V.tel : ""}` }; };
 
   /* ---------- fenêtres d'accès : choix de la société préparée pour le client ---------- */

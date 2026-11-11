@@ -128,7 +128,7 @@ VIEWS.ged = () => { const G = gedSt(); const st = gdUI(); const items = gdItems(
     <main class="wx-main">${home}${body}</main>${detPane}</div>
   <div class="wx-stat"><span>${items.length} élément(s)</span>${one.length ? `<span>${one.length} élément(s) sélectionné(s)${totSel ? " · " + gdSz(totSel) : ""}</span>` : ""}<span class="wx-mut">${Store.assets ? "Espace de fichiers sécurisé" : Store.mode === "db" ? "Base en ligne du cabinet" : "Stockage local du navigateur"}</span><span style="flex:1"></span><button class="wx-vb ${st.vw === "det" ? "on" : ""}" data-act="gedVw" data-v="det" title="Détails">${gdI("list")}</button><button class="wx-vb ${st.vw === "ico" ? "on" : ""}" data-act="gedVw" data-v="ico" title="Grandes icônes">${gdI("grid")}</button></div>
   <input type="file" id="gdPick" multiple hidden data-ch="gedUp"><input type="file" id="gdPickDir" multiple hidden webkitdirectory data-ch="gedUpDir"></div>`; };
-const brNomSafeG = () => typeof brNom === "function" ? brNom() : "SpeedCompta";
+const brNomSafeG = () => typeof brNom === "function" ? brNom() : "Speedix";
 let GD_CLIP = null, GD_LAST = { k: "", t: 0 };
 function gdTarget() { const st = gdUI(); return st.f && st.f[0] !== "_" ? st.f : st.f === "" ? "" : null; }
 function gdEnsureFolder(parent, lib) { const G = gedSt(); let f = G.folders.find(x => !x.del && (x.parent || "") === parent && x.lib.toLowerCase() === lib.toLowerCase()); if (!f) { f = { id: uid(), lib, desc: "", parent, cree: new Date().toISOString() }; G.folders.push(f); } return f.id; }

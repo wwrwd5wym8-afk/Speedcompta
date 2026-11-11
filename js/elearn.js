@@ -111,7 +111,7 @@ function elCur() { const st = UI.sub.el; const R = elW(); const c = R.courses.fi
 function elGuide(l, c) { let g = document.getElementById("elGuide"); if (!g) { g = document.createElement("div"); g.id = "elGuide"; document.body.appendChild(g); } g.innerHTML = `<div class="el-g-h"><b>🎓 ${esc(l.t)}</b><button data-x>✕</button></div><div class="el-g-b">${esc(l.txt || "").split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("")}</div><div class="el-g-f"><button class="btn sm pri" data-back>← Retour à la formation</button></div>`; g.querySelector("[data-x]").onclick = () => g.remove(); g.querySelector("[data-back]").onclick = () => { g.remove(); UI.sub.el.c = c.id; go("elHome"); }; }
 function elCertPDF(titre, L) { const blocks = [{ t: "page", title: "Attestation de formation", sub: brNomSafe() }, { t: "p", text: "Nous attestons que " + elMe() + " a suivi et validé la formation suivante :" }, { t: "h", text: titre }, { t: "table", head: ["Module", "Leçons", "Quiz"], rows: L.map(c => [c.t, String(c.L.length), elProg()[c.id + "/quiz"] != null ? elProg()[c.id + "/quiz"] + " %" : "—"]) }, { t: "p", text: "Fait le " + new Date().toLocaleDateString("fr-FR") + "." }];
   cjOut("Attestation-formation-" + titre.replace(/\W+/g, "-"), "Attestation de formation", blocks, "pdf"); }
-const brNomSafe = () => typeof brNom === "function" ? brNom() : "SpeedCompta";
+const brNomSafe = () => typeof brNom === "function" ? brNom() : "Speedix";
 Object.assign(F2ACT, {
   elOpen: (el, ev) => { ev && ev.preventDefault(); const st = UI.sub.el ||= {}; st.c = el.dataset.id; st.l = 0; st.ans = {}; st.qdone = false; if (UI.view !== "elHome") go("elHome"); else render(); },
   elBack: () => { UI.sub.el.c = null; render(); },

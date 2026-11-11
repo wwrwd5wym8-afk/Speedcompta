@@ -19,14 +19,14 @@ function ctBlocks(text) {
   return out.filter((b, i, a) => !(b.k === "sp" && (i === 0 || (a[i - 1] && a[i - 1].k === "sp"))));
 }
 const ctCol = () => scPrim();
-const ctEditeur = () => { try { return venteCfg().societe || (CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta"; } catch (e) { return "SpeedCompta"; } };
+const ctEditeur = () => { try { return venteCfg().societe || (CONFIG.branding && CONFIG.branding.nom) || "Speedix"; } catch (e) { return "SpeedCompta"; } };
 function ctPDF(docTitle, text, client) {
   const P = ctCol(), N = "#0B1733", INK = "#1E293B", MUT = "#64748B"; const p = new MiniPDF(); p.title = docTitle; const M = 50, W = p.W - 2 * M; let y = 0; const B = ctBlocks(text);
   const h1 = (B.find(b => b.k === "h1") || {}).t || docTitle; const sub = (B.find(b => b.k === "sub") || {}).t || "";
   const wrap = (s, w, size, bold) => { const words = pdfClean(String(s || "")).split(/\s+/); const o = []; let l = ""; for (const x of words) { const nl = l ? l + " " + x : x; if (textW(nl, size, bold) > w && l) { o.push(l); l = x; } else l = nl; } if (l) o.push(l); return o.length ? o : [""]; };
   const ed = ctEditeur(); const ini = ed.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
   const top = first => { if (first) { p.rect(0, 0, p.W, 150, N); p.rect(0, 150, p.W, 5, P); p.rect(p.W - 150, 0, 150, 150, PC.cov1);
-      p.rect(M, 30, 30, 30, P); p.text(M + 15, 50, ini, { size: 12, bold: true, color: "#FFFFFF", align: "center" }); p.text(M + 40, 42, ed, { size: 11, bold: true, color: "#FFFFFF" }); p.text(M + 40, 55, (CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta", { size: 8, color: PC.onDark });
+      p.rect(M, 30, 30, 30, P); p.text(M + 15, 50, ini, { size: 12, bold: true, color: "#FFFFFF", align: "center" }); p.text(M + 40, 42, ed, { size: 11, bold: true, color: "#FFFFFF" }); p.text(M + 40, 55, (CONFIG.branding && CONFIG.branding.nom) || "Speedix", { size: 8, color: PC.onDark });
       wrap(h1, W - 120, 21, true).slice(0, 2).forEach((s, i) => p.text(M, 96 + i * 24, s, { size: 21, bold: true, color: "#FFFFFF" }));
       if (sub) p.text(M, 96 + Math.min(2, wrap(h1, W - 120, 21, true).length) * 24 - 2, sub, { size: 9.5, color: PC.onDark });
       p.text(p.W - M, 42, "Établi le " + frDate(todayISO()), { size: 8, color: "#9FB3D9", align: "right" }); if (client) p.text(p.W - M, 55, client, { size: 8.5, bold: true, color: "#FFFFFF", align: "right" }); y = 184; }

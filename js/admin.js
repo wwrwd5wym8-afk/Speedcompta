@@ -4,7 +4,7 @@
 var CONFIG = null;
 const DEFAULT_CONFIG = () => ({
   version: 0, majLe: "", majPar: "",
-  branding: { nom: "SpeedCompta", slogan: "Simple · Rapide · Efficace", primaire: "#0F3D3E", menu: "#0F3D3E", menuActif: "#0F3D3E", logo: "#0F3D3E", support: "", piedPDF: "" },
+  branding: { nom: "Speedix", slogan: "Simple · Rapide · Efficace", primaire: "#0F3D3E", menu: "#0F3D3E", menuActif: "#0F3D3E", logo: "#0F3D3E", support: "", piedPDF: "" },
   fiscal: {}, millesime: "", liasseDefs: {}, liasseActive: {}, juridique: { modeles: {}, supprimes: [] }, modules: {},
   pcg: { ajouts: {}, libelles: {}, desactives: [] },
   cases: {}, casesLib: {},
@@ -20,6 +20,7 @@ const ADM = {
     let c = null;
     try { if (Store.mode === "db") { const s = await Store.db.doc("app/config").get(); if (s.exists) c = plain(s.data()); } else c = JSON.parse(localStorage.getItem("sc:config") || "null"); } catch (e) { }
     CONFIG = mergeCfg(DEFAULT_CONFIG(), c || {});
+    try { const b = CONFIG.branding; const loc = localStorage.getItem("sc:brandLocal"); if ((!b.nom || (b.nom === "SpeedCompta" && !b.nomSet)) ) b.nom = loc || "Speedix"; if (loc && b.nom !== loc && !b.nomSet) b.nom = loc; const bc = JSON.parse(localStorage.getItem("sc:brandCache") || "{}") || {}; bc.nom = b.nom; localStorage.setItem("sc:brandCache", JSON.stringify(bc)); } catch (e) { }
   },
   async save(note) {
     CONFIG.version = (CONFIG.version || 0) + 1; CONFIG.majLe = new Date().toISOString(); CONFIG.majPar = UI.userName || "Administrateur";
@@ -46,9 +47,9 @@ function applyConfig() {
   if (b.menuActif && !legacy(b.menuActif)) r.setProperty("--rail-act", b.menuActif);
   if (b.logo && !legacy(b.logo)) r.setProperty("--logo", b.logo);
   let st = document.getElementById("cfgCss"); if (!st) { st = document.createElement("style"); st.id = "cfgCss"; document.head.appendChild(st); } st.textContent = CONFIG.css || "";
-  try { document.title = b.nom || "SpeedCompta"; } catch (e) { }
+  try { document.title = b.nom || "Speedix"; } catch (e) { }
 }
-function brandParts() { const n = (CONFIG && CONFIG.branding.nom) || "SpeedCompta"; const m = n.match(/^([A-ZÀ-Ü]?[a-zà-ÿ]+)([A-ZÀ-Ü].*)$/); return m ? [m[1], m[2]] : [n, ""]; }
+function brandParts() { const n = (CONFIG && CONFIG.branding.nom) || "Speedix"; const m = n.match(/^([A-ZÀ-Ü]?[a-zà-ÿ]+)([A-ZÀ-Ü].*)$/); return m ? [m[1], m[2]] : [n, ""]; }
 function brandHTML() { const [a, b] = brandParts(); return esc(a) + (b ? `<i>${esc(b)}</i>` : ""); }
 /* Extensions JavaScript de l'administrateur */
 const NAV_EXT = [];

@@ -156,7 +156,7 @@
   const _rn = renderNow;
   renderNow = function () { const r = _rn.apply(this, arguments);
     try { const h = document.querySelector(".hdr-r"); if (h && !h.querySelector(".pk-hint")) { const b = document.createElement("button"); b.className = "pk-hint"; b.type = "button"; b.title = "Recherche rapide"; b.innerHTML = `⚡ Aller à… <kbd>${KB}</kbd>`; b.onclick = () => palette(); h.insertBefore(b, h.firstChild); } } catch (e) { }
-    try { const nm = (CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta"; const vl = viewLib(); document.title = [vl, S && S.nom, nm].filter(Boolean).join(" · "); } catch (e) { }
+    try { const nm = (CONFIG.branding && CONFIG.branding.nom) || "Speedix"; const vl = viewLib(); document.title = [vl, S && S.nom, nm].filter(Boolean).join(" · "); } catch (e) { }
     try { const k = UI.view + "|" + (S && S.id); if (lastV !== null && k !== lastV) { const m = document.querySelector("#app .main, #app main"); if (m) { m.classList.remove("pv-in"); void m.offsetWidth; m.classList.add("pv-in"); } const vl = viewLib(); if (vl && UI.view !== "dashboard") remember({ key: "v:" + UI.view + ":" + vl, lib: vl, ic: "🕘", sub: S && S.nom }); } lastV = k;
       if (k !== (H.list[H.i] || {}).k) { if (H.moving) H.moving = false; else { H.list = H.list.slice(0, H.i + 1); H.list.push({ k, v: UI.view, sid: S && S.id, sp: Object.assign({}, UI.spTab || {}) }); if (H.list.length > 40) H.list.shift(); H.i = H.list.length - 1; } } else H.moving = false; } catch (e) { }
     return r; };

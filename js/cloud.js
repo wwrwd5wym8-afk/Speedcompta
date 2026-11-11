@@ -49,7 +49,7 @@
   window.SC_DB = DB;
 
   /* ---------------- écran de connexion ---------------- */
-  const nom = () => (typeof CONFIG !== "undefined" && CONFIG && CONFIG.branding && CONFIG.branding.nom) || (() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || "SpeedCompta"; } catch (e) { return "SpeedCompta"; } })();
+  const nom = () => (typeof CONFIG !== "undefined" && CONFIG && CONFIG.branding && CONFIG.branding.nom) || (() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || "Speedix"; } catch (e) { return "Speedix"; } })();
   const ico = () => (window.SCLOGO ? SCLOGO.iconURL() : "");
   function errFr(e) { const m = String((e && e.message) || e || "");
     if (/SC_BAD_CODE/i.test(m)) return "E-mail ou code d'accès incorrect.";
@@ -65,7 +65,7 @@
   function screen(mode, msg, ok) { const app = document.getElementById("app"); if (!app) return;
     const T = { login: ["Connexion", "Se connecter"], signup: ["Première connexion", "Créer mon mot de passe"], recover: ["Mot de passe oublié", "Recevoir le lien"], reset: ["Nouveau mot de passe", "Enregistrer"] }[mode];
     app.innerHTML = `<div class="cl-wrap"><form class="cl-card" id="clForm" novalidate>
-      <div class="cl-brand"><img src="${ico()}" alt="" width="56" height="56"><div><b>Speed<i>Compta</i></b><span>Simple · Rapide · Efficace</span></div></div>
+      <div class="cl-brand"><img src="${ico()}" alt="" width="56" height="56"><div><b>${(() => { const n = String((typeof nom === "function" ? nom() : "") || (() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || ""; } catch (e) { return ""; } })() || (typeof CONFIG !== "undefined" && CONFIG && CONFIG.branding && CONFIG.branding.nom) || "Speedix"); const m = n.match(/^([A-ZÀ-Ü]?[a-zà-ÿ]+)([A-ZÀ-Ü].*)$/); return m ? m[1].replace(/[<&]/g, "") + "<i>" + m[2].replace(/[<&]/g, "") + "</i>" : n.replace(/[<&]/g, ""); })()}</b><span>Simple · Rapide · Efficace</span></div></div>
       <h1>${T[0]}</h1>
       ${mode === "signup" ? `<p class="cl-sub">Utilisez l'adresse e-mail à laquelle votre cabinet vous a invité, puis choisissez votre mot de passe.</p>` : mode === "recover" ? `<p class="cl-sub">Indiquez votre adresse e-mail : vous recevrez un lien pour choisir un nouveau mot de passe.</p>` : ""}
       ${mode !== "reset" ? `<label>Adresse e-mail<input id="clEmail" type="email" autocomplete="email" inputmode="email" required value="${(screen._email || "").replace(/"/g, "&quot;")}"></label>` : ""}
@@ -118,7 +118,7 @@
       const e = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
       const per = p => p === "an" ? "HT / an" : p === "unique" ? "HT, une fois" : "HT / mois";
       const prix = c => { const v = (Number(c) || 0) / 100; return v.toLocaleString("fr-FR", { maximumFractionDigits: v % 1 ? 2 : 0 }) + " €"; };
-      const act = o => o.lien ? `<a class="clo-a" href="${e(o.lien)}" target="_blank" rel="noopener">Souscrire</a>` : OFF.email ? `<a class="clo-a" href="mailto:${e(OFF.email)}?subject=${encodeURIComponent("Offre " + o.nom + " - " + (OFF.nom || "SpeedCompta"))}&body=${encodeURIComponent("Bonjour,\n\nJe souhaite souscrire à l'offre " + o.nom + ".\n\nNom / société :\nTéléphone :\n\nMerci.")}">Choisir cette offre</a>` : "";
+      const act = o => o.lien ? `<a class="clo-a" href="${e(o.lien)}" target="_blank" rel="noopener">Souscrire</a>` : OFF.email ? `<a class="clo-a" href="mailto:${e(OFF.email)}?subject=${encodeURIComponent("Offre " + o.nom + " - " + (OFF.nom || "Speedix"))}&body=${encodeURIComponent("Bonjour,\n\nJe souhaite souscrire à l'offre " + o.nom + ".\n\nNom / société :\nTéléphone :\n\nMerci.")}">Choisir cette offre</a>` : "";
       b.innerHTML = `<div class="clo-h"><h2>Nos offres</h2><p>Pas encore client ? Choisissez votre formule : nous créons votre espace et vous recevez votre code d'accès.</p></div>
         <div class="clo-g">${OFF.offres.map(o => `<div class="clo-c ${o.top ? "top" : ""}">${o.top ? '<span class="clo-b">Le plus choisi</span>' : ""}<div class="clo-n">${e(o.nom)}</div><div class="clo-p">${prix(o.prix)} <small>${per(o.periode)}</small></div>${o.desc ? `<div class="clo-d">${e(o.desc)}</div>` : ""}<ul>${(o.inclus || []).map(x => `<li>${e(x)}</li>`).join("")}</ul>${act(o)}</div>`).join("")}</div>
         ${OFF.email || OFF.tel ? `<div class="clo-f">Une question ? ${OFF.email ? `<a href="mailto:${e(OFF.email)}">${e(OFF.email)}</a>` : ""}${OFF.email && OFF.tel ? " · " : ""}${OFF.tel ? `<a href="tel:${e(OFF.tel)}">${e(OFF.tel)}</a>` : ""}</div>` : ""}`;
@@ -173,7 +173,7 @@
     Store.user = { id: async () => u.id, isOwner: async () => { if (ed === null) { try { ed = !!(await rest("rpc/sc_is_editor", { method: "POST", body: "{}" })); } catch (e) { ed = false; } } return ed; },
       me: async () => ({ id: u.id, name: (u.email || "").split("@")[0], email: u.email }), profiles: async () => ({}) };
     UI.userEmail = u.email;
-    const app = document.getElementById("app"); if (app) app.innerHTML = `<div style="padding:40px;font-weight:800;font-size:22px">${(() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || "SpeedCompta"; } catch (e) { return "SpeedCompta"; } })()}<div class="muted" style="font-weight:400;font-size:14px;margin-top:6px" id="bootStep">Ouverture de votre espace…</div></div>`;
+    const app = document.getElementById("app"); if (app) app.innerHTML = `<div style="padding:40px;font-weight:800;font-size:22px">${(() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || "Speedix"; } catch (e) { return "Speedix"; } })()}<div class="muted" style="font-weight:400;font-size:14px;margin-top:6px" id="bootStep">Ouverture de votre espace…</div></div>`;
   };
   /* compte sans invitation valide : en attente plutôt qu'accès libre */
   const _la = loadAccess;

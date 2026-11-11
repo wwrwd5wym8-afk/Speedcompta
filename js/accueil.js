@@ -1,7 +1,7 @@
 /* ================= Espace client : accueil d'un nouveau client, icône SpeedCompta, kit de lien ================= */
 const SC_ICON_SVG = SCLOGO.iconSVG();
 const scIconURL = () => (typeof scLogo === "function" && scLogo().custom) ? scLogo().img : "data:image/svg+xml;charset=utf-8," + encodeURIComponent(SC_ICON_SVG);
-function scSetFavicon() { try { let l = document.querySelector('link[rel="icon"]'); if (!l) { l = document.createElement("link"); l.rel = "icon"; document.head.appendChild(l); } l.type = "image/svg+xml"; l.href = scIconURL(); document.title = (CONFIG && CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta"; } catch (e) { } }
+function scSetFavicon() { try { let l = document.querySelector('link[rel="icon"]'); if (!l) { l = document.createElement("link"); l.rel = "icon"; document.head.appendChild(l); } l.type = "image/svg+xml"; l.href = scIconURL(); document.title = (CONFIG && CONFIG.branding && CONFIG.branding.nom) || "Speedix"; } catch (e) { } }
 scSetFavicon();
 function scIconPNG(size = 512) { return new Promise((res, rej) => { const img = new Image(); img.onload = () => { const c = document.createElement("canvas"); c.width = c.height = size; c.getContext("2d").drawImage(img, 0, 0, size, size); c.toBlob(b => b ? b.arrayBuffer().then(a => res(new Uint8Array(a))) : rej(new Error("png")), "image/png"); }; img.onerror = rej; img.src = scIconURL(); }); }
 
@@ -10,7 +10,7 @@ const scClientLink = () => { const s = venteCfg().site || {}; return (s.lien || 
 
 /* ---------- Écran d'accueil d'un nouveau client ---------- */
 function welHTML() {
-  const b = CONFIG.branding; const V = venteCfg(); const nom = b.nom || "SpeedCompta"; const prev = UI._welcome === "preview"; const a = UI.access || {};
+  const b = CONFIG.branding; const V = venteCfg(); const nom = b.nom || "Speedix"; const prev = UI._welcome === "preview"; const a = UI.access || {};
   const off = V.actif && (V.offres || []).length; const lic = a.licence && !prev; const o = lic ? (V.offres || []).find(x => x.id === a.offre) || {} : null;
   const codeBox = `<div class="row" style="gap:6px;flex-wrap:wrap"><input class="in mono" id="licIn" placeholder="SC-XXX-XXXX-XXXX" style="flex:1;min-width:180px"><button class="btn pri" data-act="licRedeemGo">Activer</button></div>`;
   return `<div class="wel">${prev ? `<div class="wel-prev">👁 <b>Aperçu</b> : voici ce que voit un nouveau client en ouvrant votre lien. <button class="btn sm" data-act="welBack">⟵ Revenir à l'Espace éditeur</button></div>` : ""}
@@ -46,21 +46,21 @@ LICACT.licRedeemGo = async function () { if (UI._welcome === "preview") { toast(
 Object.assign(LICACT, WELACT);
 
 /* ---------- Page de lien (votre domaine) : aperçu « SpeedCompta » + icône dans WhatsApp, e-mail, SMS ---------- */
-function scOG(V, title) { const s = V.site || {}; const dom = (s.domaine || "").trim().replace(/\/+$/, ""); const nom = (CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta"; const d = esc(s.sousTitre || "Logiciel de comptabilité en ligne");
+function scOG(V, title) { const s = V.site || {}; const dom = (s.domaine || "").trim().replace(/\/+$/, ""); const nom = (CONFIG.branding && CONFIG.branding.nom) || "Speedix"; const d = esc(s.sousTitre || "Logiciel de comptabilité en ligne");
   return `<link rel="icon" type="image/svg+xml" href="${scIconURL()}"><meta property="og:type" content="website"><meta property="og:site_name" content="${esc(nom)}"><meta property="og:title" content="${esc(title || nom)}"><meta property="og:description" content="${d}">${dom ? `<link rel="apple-touch-icon" href="${esc(dom)}/speedcompta-icone.png"><meta name="apple-mobile-web-app-title" content="${esc(nom)}"><meta name="theme-color" content="#0F3D3E"><meta property="og:image" content="${esc(dom)}/speedcompta-icone.png"><meta property="og:url" content="${esc(dom)}">` : ""}<meta name="twitter:card" content="summary">`; }
-function scLinkPage(V) { const s = V.site || {}; const nom = (CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta"; const app = s.appUrl;
+function scLinkPage(V) { const s = V.site || {}; const nom = (CONFIG.branding && CONFIG.branding.nom) || "Speedix"; const app = s.appUrl;
   return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(nom)} · Espace client</title>${scOG(V, nom + " · Espace client")}<meta http-equiv="refresh" content="1;url=${esc(app)}">
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#F5F7FB;color:#0F1B33}@media (prefers-color-scheme:dark){body{background:#0B1220;color:#E8EDF7}}.c{text-align:center;padding:24px}a{display:inline-block;margin-top:16px;padding:12px 22px;border-radius:10px;background:#0F3D3E;color:#fff;font-weight:700;text-decoration:none}</style></head>
 <body><div class="c"><img src="${scIconURL()}" width="72" height="72" alt="" style="border-radius:16px"><h1>${esc(nom)}</h1><p>Ouverture de votre espace client…</p><a href="${esc(app)}">Ouvrir ${esc(nom)}</a></div></body></html>`; }
 
 /* siteHTML : icône + aperçu de lien */
 const _siteHTMLWel = siteHTML;
-siteHTML = function (V) { const h = _siteHTMLWel(V); const nom = (CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta"; const s = V.site || {}; let out = h.replace("</title>", "</title>" + scOG(V, nom + " · logiciel de comptabilité en ligne")); if ((s.lien || "").trim()) out = out.split(esc(s.appUrl || "#none#")).join(esc(s.lien.trim())); return out; };
+siteHTML = function (V) { const h = _siteHTMLWel(V); const nom = (CONFIG.branding && CONFIG.branding.nom) || "Speedix"; const s = V.site || {}; let out = h.replace("</title>", "</title>" + scOG(V, nom + " · logiciel de comptabilité en ligne")); if ((s.lien || "").trim()) out = out.split(esc(s.appUrl || "#none#")).join(esc(s.lien.trim())); return out; };
 
 /* Paramètres du site : lien court, domaine, kit */
 const _venteSiteWel = VIEWS.venteSite;
 VIEWS.venteSite = () => { const h = _venteSiteWel(); if (!isAdmin()) return h; const S0 = venteCfg().site || {};
-  const box = `<div class="wel-kit"><h3 style="margin:0 0 6px">🔗 Votre lien client « ${esc(CONFIG.branding.nom || "SpeedCompta")} »</h3><p class="small muted" style="margin:0 0 10px">Pour que vos clients voient <b>${esc(CONFIG.branding.nom || "SpeedCompta")}</b> et votre icône (et non « Claude Artifact ») quand vous envoyez le lien par WhatsApp, SMS ou e-mail, envoyez un lien de <b>votre nom de domaine</b> qui ouvre le logiciel.</p>
+  const box = `<div class="wel-kit"><h3 style="margin:0 0 6px">🔗 Votre lien client « ${esc(CONFIG.branding.nom || "Speedix")} »</h3><p class="small muted" style="margin:0 0 10px">Pour que vos clients voient <b>${esc(CONFIG.branding.nom || "Speedix")}</b> et votre icône (et non « Claude Artifact ») quand vous envoyez le lien par WhatsApp, SMS ou e-mail, envoyez un lien de <b>votre nom de domaine</b> qui ouvre le logiciel.</p>
   <label class="f">Votre nom de domaine<input class="in" value="${esc(S0.domaine || "")}" placeholder="https://www.speedcompta.fr" data-ch="vsF" data-f="domaine"></label>
   <label class="f">Lien envoyé aux clients<input class="in" value="${esc(S0.lien || "")}" placeholder="https://www.speedcompta.fr/app" data-ch="vsF" data-f="lien"></label>
   <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="scIconDl"><img src="${scIconURL()}" width="16" height="16" alt=""> Icône (PNG)</button><button class="btn sm" data-act="scLinkDl">⇩ Page de lien (index.html)</button><button class="btn sm" data-act="welPrev">👁 Voir l'espace client</button></div>
@@ -69,4 +69,4 @@ VIEWS.venteSite = () => { const h = _venteSiteWel(); if (!isAdmin()) return h; c
 
 /* Clients et accès : aperçu de l'espace client */
 const _licViewWel = VIEWS.licences;
-VIEWS.licences = () => { const h = _licViewWel(); if (!isAdmin()) return h; return `<div class="wel-bar"><img src="${scIconURL()}" width="28" height="28" alt=""><span>Ce que voit votre client en ouvrant le lien : un espace d'accueil ${esc(CONFIG.branding.nom || "SpeedCompta")} pour activer son code et créer sa société.</span><button class="btn sm" data-act="welPrev">👁 Voir l'espace client</button></div>` + h; };
+VIEWS.licences = () => { const h = _licViewWel(); if (!isAdmin()) return h; return `<div class="wel-bar"><img src="${scIconURL()}" width="28" height="28" alt=""><span>Ce que voit votre client en ouvrant le lien : un espace d'accueil ${esc(CONFIG.branding.nom || "Speedix")} pour activer son code et créer sa société.</span><button class="btn sm" data-act="welPrev">👁 Voir l'espace client</button></div>` + h; };

@@ -60,7 +60,7 @@ function slLayout(sd, i, n, meta) {
 /* ---- rendu SVG ---- */
 function slSVG(sd, i, n, meta) { const P = slLayout(sd, i, n, meta);
   return `<svg viewBox="0 0 ${SL_W} ${SL_H}" xmlns="http://www.w3.org/2000/svg" font-family="Inter, Segoe UI, Arial, sans-serif" role="img" aria-label="${esc(sd.title || "")}">${P.map(p => p.r ? `<rect x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" width="${Math.max(0, p.w).toFixed(1)}" height="${Math.max(0, p.h).toFixed(1)}" rx="${p.rx}" fill="${p.f}"/>` : p.l ? `<line x1="${p.x1}" y1="${p.y1.toFixed(1)}" x2="${p.x2}" y2="${p.y2.toFixed(1)}" stroke="${p.c}" stroke-width="${p.w}"/>` : `<text x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" font-size="${p.z}" ${p.b ? 'font-weight="700"' : ""} fill="${p.c || SL_C.ink}" text-anchor="${p.a === "r" ? "end" : p.a === "c" ? "middle" : "start"}">${esc(p.s)}</text>`).join("")}</svg>`; }
-const slMeta = () => ({ org: (typeof S !== "undefined" && S && S.nom) || "", date: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }), brand: (typeof CONFIG !== "undefined" && CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta" });
+const slMeta = () => ({ org: (typeof S !== "undefined" && S && S.nom) || "", date: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }), brand: (typeof CONFIG !== "undefined" && CONFIG.branding && CONFIG.branding.nom) || "Speedix" });
 
 /* ---- PDF paysage 16:9 ---- */
 function slPDF(title, slides) { const p = new MiniPDF(); p.W = 841.89; p.H = 473.56; p.title = title; const k = p.W / SL_W; const meta = slMeta(); p.pages = []; p.addPage();

@@ -89,7 +89,7 @@ licPublish = async function (list, note) { const M = UI.modal; const ids = M && 
 /* message au client : lien d'accès direct + code */
 const _csMsg = licMessage;
 licMessage = function (l, code) { const E0 = CS.map && CS.map.lic[l.id]; if (!E0) return _csMsg.apply(this, arguments);
-  const V = venteCfg(); const o = V.offres.find(x => x.id === l.offre) || {}; const nom = (CONFIG.branding && CONFIG.branding.nom) || "SpeedCompta"; const c = csCode(E0.secret); const url = csAppUrl();
+  const V = venteCfg(); const o = V.offres.find(x => x.id === l.offre) || {}; const nom = (CONFIG.branding && CONFIG.branding.nom) || "Speedix"; const c = csCode(E0.secret); const url = csAppUrl();
   return { sujet: "Votre espace " + nom + " est prêt", corps: `Bonjour${l.client ? " " + l.client : ""},\n\nVotre espace ${nom} est prêt, avec votre société déjà créée (offre ${o.nom || l.offre}${l.expire ? ", valable jusqu'au " + frDate(l.expire) : ""}).\n\n1. Ouvrez ${nom} : ${url || "[lien du logiciel]"}\n2. Connectez-vous (compte gratuit, 1 minute).\n3. Dans « J'ai un code d'activation », collez votre code d'accès :\n\n   ${c}\n\nVous arrivez directement dans votre société. Ce code est personnel : ne le partagez pas.\n\nBien cordialement,\n${V.societe || nom}${V.email ? "\n" + V.email : ""}${V.tel ? "\n" + V.tel : ""}` }; };
 /* liste des accès : ouvrir la société du client, liaison automatique des comptes */
 Object.assign(LICACT, { csOpen: el => { const l = licList().find(x => x.id === el.dataset.id); if (l) csEnter(l); } });

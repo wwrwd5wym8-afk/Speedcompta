@@ -66,7 +66,7 @@ function scPdfBrand(p, x, base, size, c1, c2, dark) {
 
 /* ---------- Mémoire locale pour l'écran d'ouverture (lu avant le chargement de la configuration) ---------- */
 function scBrandCache() { const b = scBr(); const L = scLogo();
-  const c = { img: L.img, wide: L.wide, nom: b.nom || "SpeedCompta", slogan: b.slogan || "", bg: L.custom ? (scHex(b.etatFonce) || SCLOGO.TEAL) : SCLOGO.TEAL, acc: L.custom ? (scHex(b.etatAccent) || SCLOGO.GOLD) : SCLOGO.GOLD };
+  const c = { img: L.img, wide: L.wide, nom: b.nom || "Speedix", slogan: b.slogan || "", bg: L.custom ? (scHex(b.etatFonce) || SCLOGO.TEAL) : SCLOGO.TEAL, acc: L.custom ? (scHex(b.etatAccent) || SCLOGO.GOLD) : SCLOGO.GOLD };
   SCLOGO.cache = c; try { localStorage.setItem("sc:brandCache", JSON.stringify(c)); } catch (e) { } }
 const _applyCfgLogo = applyConfig;
 applyConfig = function () { const r = _applyCfgLogo.apply(this, arguments); try { scPdfPalette(); scBrandCache(); if (typeof scSetFavicon === "function") scSetFavicon(); } catch (e) { console.warn(e); } return r; };

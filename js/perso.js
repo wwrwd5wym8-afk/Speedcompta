@@ -119,13 +119,13 @@ Object.assign(F2CHG, {
 
 /* ---------- nom du logiciel : une seule source, enregistrée immédiatement pour tous ---------- */
 const BR_DEF = "SpeedCompta";
-function brNom() { return (CONFIG && CONFIG.branding && String(CONFIG.branding.nom || "").trim()) || BR_DEF; }
-async function brSetNom(v) { v = String(v || "").trim() || BR_DEF; const old = brNom(); CONFIG.branding.nom = v; if (UI.cfg && UI.cfg.branding) UI.cfg.branding.nom = v;
+function brNom() { return (CONFIG && CONFIG.branding && String(CONFIG.branding.nom || "").trim()) || (() => { try { return localStorage.getItem("sc:brandLocal"); } catch (e) { return ""; } })() || "Speedix"; }
+async function brSetNom(v) { v = String(v || "").trim() || BR_DEF; const old = brNom(); CONFIG.branding.nom = v; CONFIG.branding.nomSet = true; if (UI.cfg && UI.cfg.branding) UI.cfg.branding.nomSet = true; try { const bc = JSON.parse(localStorage.getItem("sc:brandCache") || "{}") || {}; bc.nom = v; localStorage.setItem("sc:brandCache", JSON.stringify(bc)); localStorage.setItem("sc:brandLocal", v); } catch (e) { } if (UI.cfg && UI.cfg.branding) UI.cfg.branding.nom = v;
   [CONFIG, UI.cfg].forEach(R => { const T = R && R.noms && R.noms.textes; if (T) { delete T[BR_DEF]; delete T[old]; } });
   try { const P = nmPerso(); if (P.textes) { delete P.textes[BR_DEF]; delete P.textes[old]; localStorage.setItem(NM_LS, JSON.stringify(P)); } } catch (e) { }
   try { if (typeof applyConfig === "function") applyConfig(); } catch (e) { }
   if (!isAdmin()) { toast("Seul l'éditeur peut changer le nom du logiciel (Administration › Identité)."); render(); return; }
-  try { await ADM.save("Nom du logiciel : " + v); toast("Nom du logiciel enregistré : « " + v + " », pour tous les utilisateurs et les deux versions."); } catch (e) { toast("Enregistrement impossible : " + ((e && e.message) || e)); } render(); }
+  try { await ADM.save("Nom du logiciel : " + v); toast("Nom du logiciel enregistré : « " + v + " », pour tous les utilisateurs et les deux versions."); } catch (e) { toast("Nom « " + v + " » appliqué sur cet appareil ; l'enregistrement en ligne a échoué (" + ((e && e.message) || e) + "). Réessayez une fois connecté."); } render(); }
 /* nom affiché partout, y compris dans les textes qui citaient l'ancien nom */
 function brApply() { const n = brNom(); if (n === BR_DEF) return; const re = /SpeedCompta/g; try { if (document.title.includes(BR_DEF)) document.title = document.title.replace(re, n); } catch (e) { } const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, { acceptNode: x => x.nodeValue.indexOf(BR_DEF) >= 0 && !(x.parentNode && /^(SCRIPT|STYLE|TEXTAREA)$/.test(x.parentNode.nodeName)) ? 1 : 3 }); const L = []; while (w.nextNode()) L.push(w.currentNode); L.forEach(x => { x.nodeValue = x.nodeValue.replace(re, n); });
   document.querySelectorAll("[title*='SpeedCompta'],[placeholder*='SpeedCompta']").forEach(e => { ["title", "placeholder"].forEach(a => { const v = e.getAttribute(a); if (v && v.includes(BR_DEF)) e.setAttribute(a, v.replace(re, n)); }); }); }

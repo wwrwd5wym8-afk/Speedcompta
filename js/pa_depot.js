@@ -18,7 +18,7 @@
     <label>SIREN du client destinataire<input id="dpTo" inputmode="numeric" maxlength="11" value="${esc(sir(qs.get("depot")))}" placeholder="9 chiffres"></label><div class="dest" id="dpDest" style="margin-top:10px"><span>…</span></div>
     <div class="g"><label>Votre raison sociale<input id="dpNom" placeholder="Votre société"></label><label>Votre SIREN<input id="dpSiren" inputmode="numeric" placeholder="9 chiffres"></label><label>Votre e-mail<input id="dpMail" type="email" placeholder="facturation@…"></label><label>N° de facture<input id="dpNum"></label><label>Date de facture<input id="dpDate" type="date"></label><label>Montant TTC (€)<input id="dpTtc" inputmode="decimal"></label>
     <div class="full"><div class="drop" id="dpDrop">📄 Glissez votre facture ici ou <u>choisissez un fichier</u><br><small id="dpFile">Aucun fichier</small></div><input type="file" id="dpIn" accept=".pdf,.xml" hidden></div></div>
-    <button id="dpGo" disabled>Envoyer la facture</button><div class="msg" id="dpMsg"></div><p style="margin:18px 0 0"><small>Service de réception de factures propulsé par SpeedCompta. Les données transmises sont réservées au destinataire.</small></p></div>`;
+    <button id="dpGo" disabled>Envoyer la facture</button><div class="msg" id="dpMsg"></div><p style="margin:18px 0 0"><small>Service de réception de factures propulsé par Speedix. Les données transmises sont réservées au destinataire.</small></p></div>`;
   let dest = null, file = null;
   const mount = () => { document.body.appendChild(root); bind(); }; if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
   function bind() { const $ = id => root.querySelector("#" + id);
