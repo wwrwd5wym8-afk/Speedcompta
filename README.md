@@ -1,4 +1,4 @@
 # SpeedCompta
 
 Application SpeedCompta (version autonome, installable sur iPhone, Android et ordinateur).
-Les données sont enregistrées sur l'appareil de chaque utilisateur. Version : 20261111090819.
+Les données sont enregistrées sur l'appareil de chaque utilisateur. Version : 20261111093315.
