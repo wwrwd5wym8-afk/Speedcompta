@@ -268,9 +268,10 @@ const CHG = {
     const { e, l } = findEL(el.dataset.e, el.dataset.l); const f = el.dataset.f;
     if (f === "compte") {
       const raw = el.value.trim(); const r = resolveCompte(raw);
+      if (!raw) { toast("Le compte est obligatoire : saisissez un numéro de compte ou un code tiers (⌄ ou F4 pour choisir)."); el.value = l.aux || l.compte || ""; el.classList.add("gi-err"); setTimeout(() => el.focus(), 0); return; }
       if (raw && !r.aux && !/^\d+$/.test(raw)) { saveEcr(e); quickTiersForLine(e, l, raw); return; }
       l.compte = r.compte; l.aux = r.aux;
-      if (r.compte && !r.aux && /^\d+$/.test(r.compte) && !PCG[r.compte] && !S.comptes[r.compte] && !E.some(x => x !== e && x.lignes.some(y => y.compte === r.compte))) { saveEcr(e); openModal({ type: "compte", isNew: true, quick: true, d: { num: r.compte, lib: accLib(r.compte) === "Compte " + r.compte ? "" : accLib(r.compte) } }); return; }
+      if (r.compte && !r.aux && /^\d+$/.test(r.compte) && !PCG[r.compte] && !S.comptes[r.compte] && !E.some(x => x !== e && x.lignes.some(y => y.compte === r.compte)) && !(typeof gAutoAcc === "function" && gAutoAcc(r.compte))) { saveEcr(e); openModal({ type: "compte", isNew: true, quick: true, d: { num: r.compte, lib: accLib(r.compte) === "Compte " + r.compte ? "" : accLib(r.compte) } }); return; }
       if (r.aux) autoSaisie(e, l);
     }
     else if (f === "lib") l.lib = el.value;

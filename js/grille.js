@@ -40,7 +40,7 @@ VIEWS.grille = () => {
     const einp = (f, v, type, extra = "") => lock ? `<span>${esc(type === "date" ? frDate(v) : v || "")}</span>` : `<input class="gi" ${type ? `type="${type}"` : ""} value="${esc(v || "")}" data-ch="ecr" data-id="${e.id}" data-f="${f}" ${extra}>`;
     rows += `<tr class="gr-r ${ei % 2 ? "gr-odd" : ""} ${li === 0 ? "gr-first" : ""} ${sel ? "gr-sel" : ""} ${lock ? "gr-lock" : ""} ${e.id === g.cur ? "gr-cur" : ""} ${e.id === g.flash ? "gr-flash" : ""}" data-act="gSel" data-e="${e.id}" data-l="${l.id}">
       <td class="gr-n">${n}</td><td>${einp("date", e.date, "date")}</td><td>${einp("piece", e.piece)}</td>
-      <td>${inp("compte", l.aux || l.compte, 'autocomplete="off" title="' + esc(t ? t.nom + " · " + l.compte : accLib(l.compte)) + '"', "mono gi-acc")}</td>
+      <td class="gr-acc ${!l.compte && !l.aux ? "gr-miss" : ""}">${inp("compte", l.aux || l.compte, 'autocomplete="off" title="' + esc(t ? t.nom + " · " + l.compte : accLib(l.compte)) + '"', "mono gi-acc")}<small class="gr-al">${!l.compte && !l.aux ? "⚠ compte manquant" : esc(t ? t.nom : accLib(l.compte))}</small></td>
       <td class="gr-lib">${inp("lib", l.lib || "", `placeholder="${esc(e.libelle || "")}"`)}${l.comment ? `<span class="gr-com" title="${esc(l.comment)}">💬</span>` : ""}</td>
       <td class="r">${lock ? eurz(l.debit) : `<input class="gi num" value="${l.debit ? toIn(l.debit) : ""}" data-ch="lig" data-e="${e.id}" data-l="${l.id}" data-f="debit" inputmode="decimal">`}</td>
       <td class="r">${lock ? eurz(l.credit) : `<input class="gi num" value="${l.credit ? toIn(l.credit) : ""}" data-ch="lig" data-e="${e.id}" data-l="${l.id}" data-f="credit" inputmode="decimal">`}</td>
@@ -96,7 +96,7 @@ function gCommit(focusNext = true) {
   const r = resolveCompte(raw); const net = deb - cre; const l = { id: uid(), compte: r.compte, aux: r.aux, lib: nl.lib, debit: net > 0 ? net : 0, credit: net < 0 ? -net : 0, lettre: "", dateLet: "", pointe: "", pdu: nl.pdu || "", pau: nl.pau || "" };
   e.lignes.push(l); if (!e.libelle) e.libelle = nl.lib;
   if (raw && !r.aux && !/^\d+$/.test(raw)) { saveEcr(e); g.nl = gBlank(g, { date: nl.date, piece: nl.piece, lib: nl.lib }); quickTiersForLine(e, l, raw); return true; }
-  if (r.compte && !r.aux && /^\d+$/.test(r.compte) && !PCG[r.compte] && !S.comptes[r.compte] && !E.some(x => x !== e && x.lignes.some(y => y.compte === r.compte))) { saveEcr(e); g.nl = gBlank(g, { date: nl.date, piece: nl.piece, lib: nl.lib }); openModal({ type: "compte", isNew: true, quick: true, d: { num: r.compte, lib: "" } }); return true; }
+  if (r.compte && !r.aux && /^\d+$/.test(r.compte) && !PCG[r.compte] && !S.comptes[r.compte] && !E.some(x => x !== e && x.lignes.some(y => y.compte === r.compte)) && !(typeof gAutoAcc === "function" && gAutoAcc(r.compte))) { saveEcr(e); g.nl = gBlank(g, { date: nl.date, piece: nl.piece, lib: nl.lib }); openModal({ type: "compte", isNew: true, quick: true, d: { num: r.compte, lib: "" } }); return true; }
   if (r.aux && e.lignes.length === 1) autoSaisie(e, l);
   saveEcr(e); g.flash = e.id;
   const t = ecrTotals(e);
