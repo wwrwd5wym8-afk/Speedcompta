@@ -19,10 +19,11 @@ const GDA_RULES = [
   ["fac", "Factures et devis", "facture, devis, avoir, relance", "Clients/Factures et devis"],
   ["bq", "Banque et paiements", "sepa, virement, paiement, pain.001, relevé, rapprochement, banque", "Banque/Paiements et rapprochements"],
   ["eco", "E-commerce", "e-commerce, ecommerce, boutique, site vitrine, site", "E-commerce"],
-  ["crm", "CRM et e-mail marketing", "crm, campagne, destinataires, prospects, e-mail", "Commercial/CRM"],
+  ["crm", "CRM", "crm, prospects, opportunités, pipeline", "Commercial/CRM"],
+  ["mkg", "Marketing", "marketing, campagne, destinataires, publication, visuel, réseaux sociaux, instagram, tiktok, whatsapp, lien en bio, qr, catalogue", "Marketing/Exports"],
   ["frm", "Formation et présentation", "attestation, formation, présentation, presentation, diaporama", "Divers/Formation"],
   ["aud", "Audit", "audit, commissaire, cac, programme de travail, lettre de mission", "Audit"]];
-const GDA_VIEW = [[/^(etats|rapports?|bilanImg|tftFr|exports|documents)/, "ca"], [/^(liasse)/, "lia"], [/^tva/, "tva"], [/^is$/, "is"], [/^(fec|cloture)/, "fec"], [/^(consult|balrev|grille|journ)/, "gl"], [/^(prev|budget|bp|fin|cdgAtt)/, "bp"], [/^(cns|conseil|cdg|gem|pat|pp|strat)/, "cns"], [/^(juri|rapGest|fu|jur)/, "jur"], [/^paie/, "paie"], [/^(ventes|factu|facEdit)/, "fac"], [/^(banque|bq|achats|payfou)/, "bq"], [/^ecom/, "eco"], [/^crm/, "crm"], [/^(el|pres)/, "frm"], [/^aud/, "aud"]];
+const GDA_VIEW = [[/^(etats|rapports?|bilanImg|tftFr|exports|documents)/, "ca"], [/^(liasse)/, "lia"], [/^tva/, "tva"], [/^is$/, "is"], [/^(fec|cloture)/, "fec"], [/^(consult|balrev|grille|journ)/, "gl"], [/^(prev|budget|bp|fin|cdgAtt)/, "bp"], [/^(cns|conseil|cdg|gem|pat|pp|strat)/, "cns"], [/^(juri|rapGest|fu|jur)/, "jur"], [/^paie/, "paie"], [/^(ventes|factu|facEdit)/, "fac"], [/^(banque|bq|achats|payfou)/, "bq"], [/^ecom/, "eco"], [/^crm/, "crm"], [/^mkg/, "mkg"], [/^(el|pres)/, "frm"], [/^aud/, "aud"]];
 function gdaRules() { const c = gdCfg(); const R = c.rules && c.rules.length ? c.rules : GDA_RULES.map(([id, l, kw, p]) => ({ id, l, kw, p, m: "ask" })); return R; }
 function gdaMatch(name, meta) { const R = gdaRules(); const txt = (" " + [name, meta && meta.cat, meta && meta.lib].filter(Boolean).join(" ") + " ").toLowerCase().replace(/[_\-.]/g, " ");
   let best = null, sc = 0; R.forEach(r => { String(r.kw || "").split(",").map(k => k.trim().toLowerCase()).filter(Boolean).forEach(k => { if (txt.includes(k.replace(/[_\-.]/g, " ")) && k.length > sc) { best = r; sc = k.length; } }); });

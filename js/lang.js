@@ -177,6 +177,15 @@ Statut|Status|Estado|Status|Stato
 Trier|Sort|Ordenar|Sortieren|Ordina
 Afficher|View|Ver|Ansicht|Visualizza
 Détails|Details|Detalles|Details|Dettagli
+Marketing|Marketing|Marketing|Marketing|Marketing
+Réseaux sociaux|Social networks|Redes sociales|Soziale Netzwerke|Social network
+Publier|Publish|Publicar|Veröffentlichen|Pubblica
+Calendrier|Calendar|Calendario|Kalender|Calendario
+Catalogue et nouveautés|Catalogue and new products|Catálogo y novedades|Katalog und Neuheiten|Catalogo e novità
+WhatsApp et SMS|WhatsApp and SMS|WhatsApp y SMS|WhatsApp und SMS|WhatsApp e SMS
+Lien en bio et QR|Link in bio and QR|Enlace en bio y QR|Link in Bio und QR|Link in bio e QR
+Statistiques|Statistics|Estadísticas|Statistiken|Statistiche
+Nouvelle publication|New post|Nueva publicación|Neuer Beitrag|Nuovo post
 Contrôle de gestion|Management control|Control de gestión|Controlling|Controllo di gestione
 Gestion d'entreprise|Business management|Gestión empresarial|Unternehmensführung|Gestione aziendale
 Gestion du patrimoine|Wealth management|Gestión patrimonial|Vermögensverwaltung|Gestione patrimoniale
