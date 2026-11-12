@@ -26,7 +26,7 @@ const FD_TREE = {
   SCI_IR: [["Déclaration", ["2072"]], ["Annexes", ["2072AN1", "2072AN2", "2072E"]], ["Crédits d'impôts", ["2069RCI_S"]], ["Identification", ["FIDENTIF_S"]]]
 };
 const FD_REG_LIB = { IS_RN: "Société à l'IS · réel normal (SARL, SAS, SA, SCI à l'IS)", IS_RS: "Société à l'IS · réel simplifié", BIC_RN: "BIC à l'IR · réel normal (EI, EURL, SNC)", BIC_RS: "BIC à l'IR · réel simplifié", BNC: "Professions libérales · BNC déclaration contrôlée", SCI_IR: "SCI à l'IR · revenus fonciers (2072)" };
-const FD_TABS = [["liasse", "📑 Liasse et IS"], ["tva", "🧾 TVA"], ["s2572", "💶 Solde d'IS 2572"], ["das2", "🤝 DAS2"], ["ecf", "✅ ECF"], ["edi", "📡 Envoi EDI"], ["cfg", "⚙ Paramètres"]];
+const FD_TABS = [["liasse", "📑 Liasse fiscale"], ["is", "🏛 IS (2065, 2058-A)"], ["tva", "🧾 TVA"], ["s2572", "💶 Solde d'IS 2572"], ["das2", "🤝 DAS2"], ["ecf", "✅ ECF"], ["edi", "📡 Envoi EDI"], ["cfg", "⚙ Paramètres"]];
 const FD_DEF = { zoom: 1.5, hl: true, hlColor: "#FFF3C4", focusColor: "#DCEBFF", valColor: "#0B1F5C", font: "", autoCoh: true, cohOnSave: true, autoGed: "ask", ediAuto: false, tolerance: 1, map: {}, coh: [], models: {}, showEmpty: true };
 function fdCfg() { return Object.assign({}, FD_DEF, psRoot().fd || {}, S && S.fdCfg && S.fdCfg.on ? S.fdCfg.v || {} : {}); }
 function fdCfgW() { if (S.fdCfg && S.fdCfg.on) { S.fdCfg.v ||= {}; return S.fdCfg.v; } const R = psRootW(); return R.fd ||= {}; }
@@ -44,12 +44,13 @@ async function fdEnsure(ids) { const need = [...new Set(ids.filter(id => !fdMode
   for (const p of need) { try { await loadScript("js/fxt_" + p + ".js"); } catch (e) { UI.fdErr = "Modèles impôts indisponibles (" + p + ") : " + e.message; } }
   return need.length; }
 /* ---------- instance de déclaration ---------- */
-function fdInstKey() { const st = fdSt(); const ex = exCur(); if (st.tab === "tva") return "TVA:" + (st.per || (fdPers()[0] || {}).id); if (st.tab === "s2572") return "2572:" + ex.id; if (st.tab === "das2") return "DAS2:" + fdDasY(); if (st.tab === "ecf") return "ECF:" + ex.id; return "LIA:" + ex.id + ":" + fdReg(); }
+function fdInstKey() { const st = fdSt(); const ex = exCur(); if (st.tab === "tva") return "TVA:" + (st.per || (fdPers()[0] || {}).id); if (st.tab === "s2572") return "2572:" + ex.id; if (st.tab === "das2") return "DAS2:" + fdDasY(); if (st.tab === "ecf") return "ECF:" + ex.id; return "LIA:" + ex.id + ":" + fdReg(); } /* l'onglet IS partage les montants de la liasse */
 function fdInst(k) { const D = S.fxd ||= {}; const I = D[k || fdInstKey()] ||= { v: {}, off: {}, hist: [] }; I.v ||= {}; I.off ||= {}; I.hist ||= []; return I; }
 const fdPers = () => { try { return periodesTVA(exCur()); } catch (e) { return []; } };
 const fdDasY = () => { const st = fdSt(); return st.y || (typeof f2Year === "function" ? f2Year() : exCur().fin.slice(0, 4)); };
 function fdFormsOfTab() { const st = fdSt(); if (st.tab === "tva") { const p = fdPers().find(x => x.id === st.per) || fdPers()[0]; return [["Déclaration", [p && p.type === "CA12" ? "CA12" : "CA3"]], ["Paiement", ["TIDENTIF"]]]; }
-  if (st.tab === "s2572") return [["Déclaration", ["2572"]], ["Paiement", ["PIDENTIF"]]]; if (st.tab === "das2") return [["Déclaration", ["DAS2"]]]; if (st.tab === "ecf") return [["Compte rendu", ["ECF"]]];
+  if (st.tab === "s2572") return [["Déclaration", ["2572"]], ["Paiement", ["PIDENTIF"]]];
+  if (st.tab === "is") { const r = fdReg(); if (/^IS_/.test(r)) return [["Déclaration", ["2065", "2065B"]], ["Résultat fiscal", ["2058A", "2058AD", "2058B", "2058C"]], ["Crédits d'impôts", ["2069RCI"]], ["Taux réduit", ["CALC219"]]]; return fdTree(r); } if (st.tab === "das2") return [["Déclaration", ["DAS2"]]]; if (st.tab === "ecf") return [["Compte rendu", ["ECF"]]];
   return fdTree(fdReg()); }
 function fdLog(I, act) { I.hist.unshift({ at: new Date().toISOString(), by: typeof xsMe === "function" ? xsMe() : "moi", act }); I.hist.length = Math.min(I.hist.length, 200); }
 /* ---------- calcul des valeurs (liées à la comptabilité) ---------- */
@@ -131,7 +132,7 @@ function fdCoh(forms, I, C) {
 }
 /* ---------- vue principale ---------- */
 VIEWS.fdDecl = () => { const st = fdSt(); if (st.tab === "cfg") return fdHead() + fdCfgView(); if (st.tab === "edi") return fdHead() + fdEdiView(); return fdHead() + fdBody(); };
-const FD_EMB = { tva: "tva", das2: "das2", ecf: "ecf", isSolde: "s2572" };
+const FD_EMB = { is: "is", tva: "tva", das2: "das2", ecf: "ecf", isSolde: "s2572", liasseEdit: "liasse" };
 function fdBody(emb) {
   const st = fdSt(); const cfg = fdCfg(); const ex = exCur();
   const tree = fdFormsOfTab(); const ids = tree.flatMap(x => x[1]);
@@ -142,7 +143,7 @@ function fdBody(emb) {
   const coh = fdCoh(ids.filter(id => !I.off[id]), I, C); UI._fdCoh = coh;
   const fid = st.form; const F = fdForm(fid);
   const treeH = tree.map(([g, L]) => { const all = L.every(id => !I.off[id]); return `<div class="fd-tg"><label class="fd-tgh"><input type="checkbox" ${all ? "checked" : ""} data-ch="fdOffG" data-l="${esc(L.join(","))}" ${valid ? "disabled" : ""}><span>📁 ${esc(g)}</span></label>${L.map(id => { const miss = !fdForm(id); const n = coh.filter(c => c.goto === id).length; return `<div class="fd-ti ${id === fid ? "on" : ""} ${miss ? "miss" : ""}"><input type="checkbox" ${!I.off[id] ? "checked" : ""} data-ch="fdOff" data-id="${id}" ${valid ? "disabled" : ""} title="Inclure ce formulaire dans la déclaration"><button class="lnk" data-act="fdGo" data-id="${id}">${esc(fdTitle(id))}</button>${n ? `<span class="fd-badge" title="${n} anomalie(s)">${n}</span>` : ""}${miss ? '<span class="fd-miss" title="Modèle à importer">à importer</span>' : ""}</div>`; }).join("")}</div>`; }).join("");
-  const regSel = st.tab === "liasse" ? `<label class="fd-sel">Type de société <select class="in sm" data-ch="fdReg">${Object.keys(FD_TREE).map(k => `<option value="${k}" ${k === fdReg() ? "selected" : ""}>${esc(FD_REG_LIB[k])}</option>`).join("")}</select></label>` : st.tab === "tva" ? `<label class="fd-sel">Période <select class="in sm" data-ch="fdPer">${fdPers().map(p => `<option value="${p.id}" ${p.id === (st.per || (fdPers()[0] || {}).id) ? "selected" : ""}>${esc(p.lib)}</option>`).join("")}</select></label>` : st.tab === "das2" ? `<label class="fd-sel">Année <input class="in sm" style="width:80px" data-ch="fdY" value="${esc(fdDasY())}"></label>` : `<span class="fd-sel">Exercice ${esc(fdDate(ex.debut))} – ${esc(fdDate(ex.fin))}</span>`;
+  const regSel = st.tab === "liasse" || st.tab === "is" ? `<label class="fd-sel">Type de société <select class="in sm" data-ch="fdReg">${Object.keys(FD_TREE).map(k => `<option value="${k}" ${k === fdReg() ? "selected" : ""}>${esc(FD_REG_LIB[k])}</option>`).join("")}</select></label>` : st.tab === "tva" ? `<label class="fd-sel">Période <select class="in sm" data-ch="fdPer">${fdPers().map(p => `<option value="${p.id}" ${p.id === (st.per || (fdPers()[0] || {}).id) ? "selected" : ""}>${esc(p.lib)}</option>`).join("")}</select></label>` : st.tab === "das2" ? `<label class="fd-sel">Année <input class="in sm" style="width:80px" data-ch="fdY" value="${esc(fdDasY())}"></label>` : `<span class="fd-sel">Exercice ${esc(fdDate(ex.debut))} – ${esc(fdDate(ex.fin))}</span>`;
   const bar = `<div class="fd-bar"><details class="fd-dd"><summary class="btn sm">Actions ▾</summary><div class="fd-ddm">
       <button data-act="fdResetForm">↺ Réinitialiser les saisies de ce formulaire</button><button data-act="fdResetAll">↺ Réinitialiser toute la déclaration</button><button data-act="fdN1">⤵ Reprendre les informations de l'exercice précédent</button>
       <button data-act="fdCsv">⇩ Exporter les données (CSV)</button><button data-act="fdJson">⇩ Exporter les données (fichier EDI préparatoire)</button><button data-act="fdImpModel">⇧ Importer un nouveau modèle (PDF)</button><button data-act="fdHist">🕘 Historique des actions</button></div></details>
@@ -340,7 +341,7 @@ renderModal = function () { const M = UI.modal;
   return _rmFX.apply(this, arguments); };
 /* ---------- modèles impôts intégrés aux modules TVA, 2572, DAS2 et ECF ---------- */
 Object.entries(FD_EMB).forEach(([v, tab]) => { const _v = VIEWS[v]; if (!_v) return; VIEWS[v] = function () { if (UI.view !== v) return _v.apply(this, arguments); const E2 = UI.sub.fdEmb ||= {}; const m = E2[v] || "impot";
-  const lib = { tva: "TVA · déclaration 3310-CA3", das2: "DAS2 · honoraires versés", ecf: "ECF · compte rendu de mission", s2572: "IS · relevé de solde 2572" }[tab];
+  const lib = { is: "Impôt sur les sociétés · 2065 et 2058-A", liasse: "Liasse fiscale · modèle des impôts", tva: "TVA · déclaration 3310-CA3", das2: "DAS2 · honoraires versés", ecf: "ECF · compte rendu de mission", s2572: "IS · relevé de solde 2572" }[tab];
   const sw = `<div class="fd-sw"><button class="${m === "impot" ? "on" : ""}" data-act="fdEmb" data-v="${v}" data-m="impot">📄 Modèle impôt (identique)</button><button class="${m !== "impot" ? "on" : ""}" data-act="fdEmb" data-v="${v}" data-m="speedix">✨ Modèle ${esc(brNomSafeFx())}</button></div>`;
   if (m !== "impot") { const h = _v.apply(this, arguments); return sw + h; }
   const st = fdSt(); if (st.tab !== tab) { st.tab = tab; st.form = null; } st.mode = "impot"; if (tab === "tva" && typeof fxPid === "function") { try { const p = fxPid(); if (p && p !== st.per) { st.per = p; UI._fdCtx = null; } } catch (e) { } }
