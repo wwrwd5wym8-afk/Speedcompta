@@ -4,7 +4,7 @@
    Toutes les formules restent modifiables dans Déclarations › Paramètres.
    ============================================================ */
 const FD_MAP = {
-  /* 2065 */ "2065|z97_192": "T:S.nom", "2065|z111_192": "T:S.adresse", "2065|z207_369": "T:S.naf || ''", "2065|z255_192": "BASE_N", "2065|z255_385": "BASE_R", "2065|z255_510": "NEG(ISR('rf'))", "2065|z597_192": "T:'Oui'", "2065|z597_369": "T:BRAND",
+  /* 2065 */ "2065|z196_369": "T:''", "2065|z97_192": "T:S.nom", "2065|z111_192": "T:S.adresse", "2065|z207_369": "T:S.naf || ''", "2065|z255_192": "BASE_N", "2065|z255_385": "BASE_R", "2065|z255_510": "NEG(ISR('rf'))", "2065|z597_192": "T:'Oui'", "2065|z597_369": "T:BRAND",
   /* 2058-A */ "2058A|WA": "POS(ISR('resAvIS'))", "2058A|WS": "NEG(ISR('resAvIS'))", "2058A|I7": "SOLDE('695','696','697','698','699')", "2058A|WJ": "SOLDE('6712','6582')", "2058A|WR": "POS(ISR('resAvIS')) + ISR('totR')", "2058A|XH": "NEG(ISR('resAvIS')) + ISR('totD')",
   "2058A|XI": "POS(ISR('avantDef'))", "2058A|XJ": "NEG(ISR('avantDef'))", "2058A|XL": "ISR('imputDef')", "2058A|XN": "POS(ISR('rf'))", "2058A|XO": "NEG(ISR('rf'))",
   /* 2058-B */ "2058B|KF": "ISR('imputDef')",
