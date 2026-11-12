@@ -3,7 +3,7 @@
    DAS2 (une page par bénéficiaire), compte rendu de mission ECF (modèle reproduit).
    Toutes les formules restent modifiables dans Déclarations › Paramètres.
    ============================================================ */
-const FX_MAP = {
+const FD_MAP = {
   /* 2065 */ "2065|z97_192": "T:S.nom", "2065|z111_192": "T:S.adresse", "2065|z207_369": "T:S.naf || ''", "2065|z255_192": "BASE_N", "2065|z255_385": "BASE_R", "2065|z255_510": "NEG(ISR('rf'))", "2065|z597_192": "T:'Oui'", "2065|z597_369": "T:BRAND",
   /* 2058-A */ "2058A|WA": "POS(ISR('resAvIS'))", "2058A|WS": "NEG(ISR('resAvIS'))", "2058A|I7": "SOLDE('695','696','697','698','699')", "2058A|WJ": "SOLDE('6712','6582')", "2058A|WR": "POS(ISR('resAvIS')) + ISR('totR')", "2058A|XH": "NEG(ISR('resAvIS')) + ISR('totD')",
   "2058A|XI": "POS(ISR('avantDef'))", "2058A|XJ": "NEG(ISR('avantDef'))", "2058A|XL": "ISR('imputDef')", "2058A|XN": "POS(ISR('rf'))", "2058A|XO": "NEG(ISR('rf'))",
@@ -19,57 +19,57 @@ const FX_MAP = {
   "2035B|CA": "POS(F('2035A|AG') - F('2035A|BR'))", "2035B|CH": "SOLDE('681')", "2035B|CF": "NEG(F('2035A|AG') - F('2035A|BR'))", "2035B|CE": "F('2035B|CA')+F('2035B|CB')+F('2035B|CC')+F('2035B|CD')", "2035B|CN": "F('2035B|CF')+F('2035B|CG')+F('2035B|CH')+F('2035B|CK')+F('2035B|CL')+F('2035B|CM')",
   "2035B|CP": "POS(F('2035B|CE') - F('2035B|CN'))", "2035B|CR": "NEG(F('2035B|CE') - F('2035B|CN'))"
 };
-const FX_LAB = [ /* correspondances par libellé (tous formulaires) */
+const FD_LAB = [ /* correspondances par libellé (tous formulaires) */
   [/^(Désignation (de la société|ou nom, prénom|de l'entreprise)|Raison sociale|Dénomination(?! et adresse)|Forme juridique \/ Dénomination|Nom, prénom ou dénomination)/i, "T:S.nom"],
   [/(Adresse du principal établissement|^- ?N°, [Tt]ype et nom de voie|^Adresse$|^Adresse :)/, "T:S.adresse || ''"], [/^- ?Code postal ?\/ ?Ville/, "T:[S.cp, S.ville].filter(Boolean).join(' ')"],
   [/SIREN/, "T:S.siren || ''"], [/SIRET/, "T:S.siret || ''"], [/(^NAF$|Code activité NAF|N° SIREN NAF|N° SIRET NAF)/, "T:S.naf || S.ape || ''"],
   [/(Exercice clos le|Date de clôture de l'exercice ou période N$)/, "T:DATE(EX.fin)"], [/Date de début de l'exercice ou période N$|Exercice ouvert le/, "T:DATE(EX.debut)"], [/Durée de l'exercice ou période N$/, "T:MOIS"],
   [/^(Activités? exercées?|Activité|Nature de l'activité)/, "T:S.naf || ''"], [/^Code monnaie/, "T:'EUR'"], [/Période de déclaration/, "T:PER.lib || ''"]
 ];
-function FX_MAPF(id, f, C) {
+function FD_MAPF(id, f, C) {
   const l = (f.n || f.l || "").trim();
   if (id === "DAS2" && f.i === "ANNEE") return "T:FXY";
   if (id === "ECF") return null;
   if (/^z(1[5-9]|2[0-3])_(2\d|3\d|4[0-3])$/.test(f.i)) return "T:S.nom";
   if (/^(2050|2051|2052|2053|2054|2055|2056|2057|2058C)$/.test(id) && /^z(8[0-3]|60|61)_4(8\d)$/.test(f.i)) return "T:DATE(EX.fin)";
-  if (id === "DAS2") { const r = fxDasMap(f, 0); if (r) return r; }
+  if (id === "DAS2") { const r = fdDasMap(f, 0); if (r) return r; }
   const Ls = [f.n, f.l].filter(Boolean).map(x => x.trim()); const T = re => Ls.some(x => re.test(x));
   if (/^2072/.test(id)) { if (T(/^Revenus bruts/)) return "-SOLDE('706','708','752')"; if (T(/^Intérêts d'emprunts/)) return "SOLDE('661')"; if (T(/^Frais et charges autres/)) return "SOLDE('61','62','63')"; if (T(/^Revenu net ou déficit/)) return "-SOLDE('706','708','752') - SOLDE('61','62','63','661')"; if (T(/^Nombre d'associés/)) return "T:S.nbAssocies || ''"; }
   if (/^2035/.test(id) && T(/^Nom, prénom ou dénomination/)) return "T:[S.nom, S.adresse].filter(Boolean).join('\\n')";
-  for (const [re, fm] of FX_LAB) if (re.test(l)) return fm;
+  for (const [re, fm] of FD_LAB) if (re.test(l)) return fm;
   return null;
 }
 /* ---------- DAS2 : page 1 = entreprise, totaux et 1er bénéficiaire ; une page par bénéficiaire suivant ---------- */
-const FX_DAS_F = [[/^NOM$/, "T:(B.nom||'').toUpperCase()"], [/^Raison Sociale$/, "T:B.nom||''"], [/^Complément d'adresse$/, "T:''"], [/^Voie$/, "T:B.adresse||''"], [/^Profession$/, "T:B.prof||''"], [/^N° SIRET$/, "T:B.siren||''"], [/^Honoraires, vacations$/, "B.honoraires"], [/^Commissions$/, "B.commissions"], [/^Droits d'auteur$/, "B.droits"], [/^Autres rémunérations$/, "B.autres"], [/TVA Net sur droit d'auteur/, "B.tva"]];
-function fxDasMap(f, idx) { const l = (f.n || f.l || "").trim(); const y = f.y; const ben = idx > 0 || y > 395 || /^p2\./.test(f.i);
+const FD_DAS_F = [[/^NOM$/, "T:(B.nom||'').toUpperCase()"], [/^Raison Sociale$/, "T:B.nom||''"], [/^Complément d'adresse$/, "T:''"], [/^Voie$/, "T:B.adresse||''"], [/^Profession$/, "T:B.prof||''"], [/^N° SIRET$/, "T:B.siren||''"], [/^Honoraires, vacations$/, "B.honoraires"], [/^Commissions$/, "B.commissions"], [/^Droits d'auteur$/, "B.droits"], [/^Autres rémunérations$/, "B.autres"], [/TVA Net sur droit d'auteur/, "B.tva"]];
+function fdDasMap(f, idx) { const l = (f.n || f.l || "").trim(); const y = f.y; const ben = idx > 0 || y > 395 || /^p2\./.test(f.i);
   if (!ben) { if (/^Honoraires, vacations$/.test(l)) return "DAS.reduce((a,g)=>a+g.honoraires,0)"; if (/^Commissions$/.test(l)) return "DAS.reduce((a,g)=>a+g.commissions,0)"; if (/^Droits d'auteur$/.test(l)) return "DAS.reduce((a,g)=>a+g.droits,0)"; if (/^Autres rémunérations$/.test(l)) return "DAS.reduce((a,g)=>a+g.autres,0)"; if (/TVA Net sur droit/.test(l)) return "DAS.reduce((a,g)=>a+g.tva,0)"; if (/^Raison sociale$/.test(l)) return "T:S.nom"; if (/^Adresse$/.test(l)) return "T:S.adresse||''"; if (/^Activité$/.test(l)) return "T:S.naf||''"; return null; }
-  const m = FX_DAS_F.find(([re]) => re.test(l)); return m ? m[1].replace(/\bB\b/g, "DAS[" + idx + "]") + (m[1].startsWith("T:") ? "" : "") : null; }
-function FX_REPEAT(id, F, I, C) { if (id !== "DAS2") return null; const n = Math.max(1, (C.das || []).length); const out = [{ p: F.p[0], pi: 0, sfx: "", lib: "Page 1 · entreprise, totaux et bénéficiaire 1" + (C.das[0] ? " (" + C.das[0].nom + ")" : "") }];
+  const m = FD_DAS_F.find(([re]) => re.test(l)); return m ? m[1].replace(/\bB\b/g, "DAS[" + idx + "]") + (m[1].startsWith("T:") ? "" : "") : null; }
+function FD_REPEAT(id, F, I, C) { if (id !== "DAS2") return null; const n = Math.max(1, (C.das || []).length); const out = [{ p: F.p[0], pi: 0, sfx: "", lib: "Page 1 · entreprise, totaux et bénéficiaire 1" + (C.das[0] ? " (" + C.das[0].nom + ")" : "") }];
   for (let k = 1; k < n; k++) out.push({ p: F.p[1], pi: 1, sfx: "#" + k, lib: "Bénéficiaire " + (k + 1) + " · " + (C.das[k] || {}).nom });
   return out; }
-function FX_REP_VAL(k, C, get) { const m = /^DAS2\|(.+)#(\d+)$/.exec(k); if (!m) return null; const f = fxFields("DAS2").find(x => x.i === m[1]); if (!f) return null; const fm = fxDasMap(f, +m[2]); if (!fm) return null; const v = fxEval(fm.replace(/DAS\[(\d+)\]/g, "DAS[$1]"), C, get); return v && typeof v === "object" ? null : v; }
+function FD_REP_VAL(k, C, get) { const m = /^DAS2\|(.+)#(\d+)$/.exec(k); if (!m) return null; const f = fdFields("DAS2").find(x => x.i === m[1]); if (!f) return null; const fm = fdDasMap(f, +m[2]); if (!fm) return null; const v = fdEval(fm.replace(/DAS\[(\d+)\]/g, "DAS[$1]"), C, get); return v && typeof v === "object" ? null : v; }
 /* ---------- contrôles de cohérence d'origine ---------- */
-const FX_COH = [
-  { lib: "Bilan : total actif net (2050) = total passif (2051)", forms: ["2050", "2051"], fn: (g, h) => (h("2050|CO.3") || h("2051|EE")) && Math.abs(g("2050|CO.3") - g("2051|EE")) > 100 ? "Actif " + fxFmt(g("2050|CO.3"), {}) + " / passif " + fxFmt(g("2051|EE"), {}) : null },
-  { lib: "2050 : total général brut = total II + III + IV + V + VI", forms: ["2050"], fn: g => Math.abs(g("2050|CO") - (g("2050|BJ") + g("2050|CJ") + g("2050|CW") + g("2050|CM") + g("2050|CN"))) > 100 ? "Écart de " + fxFmt(g("2050|CO") - (g("2050|BJ") + g("2050|CJ") + g("2050|CW") + g("2050|CM") + g("2050|CN")), {}) : null },
-  { lib: "2050 : total II (actif immobilisé brut) = somme des lignes", forms: ["2050"], fn: g => { const s = "AB CX AF AH AJ AL AN AP AR AT AV CS CU BB BD BF BH".split(" ").reduce((a, k) => a + g("2050|" + k), 0); return Math.abs(g("2050|BJ") - s) > 100 ? "BJ " + fxFmt(g("2050|BJ"), {}) + " / somme " + fxFmt(s, {}) : null; } },
-  { lib: "2050 : total III (actif circulant brut) = somme des lignes", forms: ["2050"], fn: g => { const s = "BL BN BP BR BT BV BX BZ CB CD CF CH".split(" ").reduce((a, k) => a + g("2050|" + k), 0); return Math.abs(g("2050|CJ") - s) > 100 ? "CJ " + fxFmt(g("2050|CJ"), {}) + " / somme " + fxFmt(s, {}) : null; } },
-  { lib: "2051 : résultat de l'exercice = résultat du compte de résultat", forms: ["2051"], fn: (g, h, C) => C.L["2053|HN"] != null && Math.abs(g("2051|DI") - C.L["2053|HN"]) > 100 ? "2051 DI " + fxFmt(g("2051|DI"), {}) + " / 2053 HN " + fxFmt(C.L["2053|HN"], {}) : null },
-  { lib: "2058-A : résultat comptable (WA / WS) = résultat du bilan (2051 DI)", forms: ["2058A", "2051"], fn: g => Math.abs((g("2058A|WA") - g("2058A|WS")) - g("2051|DI")) > 100 ? "WA − WS = " + fxFmt(g("2058A|WA") - g("2058A|WS"), {}) + " / DI = " + fxFmt(g("2051|DI"), {}) : null },
-  { lib: "2058-A : bénéfice ou déficit (XI/XJ) = total I − total II", forms: ["2058A"], fn: g => Math.abs((g("2058A|XI") - g("2058A|XJ")) - (g("2058A|WR") - g("2058A|XH"))) > 100 ? "XI − XJ = " + fxFmt(g("2058A|XI") - g("2058A|XJ"), {}) + " / WR − XH = " + fxFmt(g("2058A|WR") - g("2058A|XH"), {}) : null },
-  { lib: "2065 : bénéfices imposables = résultat fiscal 2058-A (XN)", forms: ["2065", "2058A"], fn: g => Math.abs(g("2065|z255_192") + g("2065|z255_385") - g("2058A|XN")) > 100 ? "2065 : " + fxFmt(g("2065|z255_192") + g("2065|z255_385"), {}) + " / XN : " + fxFmt(g("2058A|XN"), {}) : null },
-  { lib: "2065 : déficit = 2058-A (XO)", forms: ["2065", "2058A"], fn: g => Math.abs(g("2065|z255_510") - g("2058A|XO")) > 100 ? fxFmt(g("2065|z255_510"), {}) + " / " + fxFmt(g("2058A|XO"), {}) : null },
+const FD_COH = [
+  { lib: "Bilan : total actif net (2050) = total passif (2051)", forms: ["2050", "2051"], fn: (g, h) => (h("2050|CO.3") || h("2051|EE")) && Math.abs(g("2050|CO.3") - g("2051|EE")) > 100 ? "Actif " + fdFmt(g("2050|CO.3"), {}) + " / passif " + fdFmt(g("2051|EE"), {}) : null },
+  { lib: "2050 : total général brut = total II + III + IV + V + VI", forms: ["2050"], fn: g => Math.abs(g("2050|CO") - (g("2050|BJ") + g("2050|CJ") + g("2050|CW") + g("2050|CM") + g("2050|CN"))) > 100 ? "Écart de " + fdFmt(g("2050|CO") - (g("2050|BJ") + g("2050|CJ") + g("2050|CW") + g("2050|CM") + g("2050|CN")), {}) : null },
+  { lib: "2050 : total II (actif immobilisé brut) = somme des lignes", forms: ["2050"], fn: g => { const s = "AB CX AF AH AJ AL AN AP AR AT AV CS CU BB BD BF BH".split(" ").reduce((a, k) => a + g("2050|" + k), 0); return Math.abs(g("2050|BJ") - s) > 100 ? "BJ " + fdFmt(g("2050|BJ"), {}) + " / somme " + fdFmt(s, {}) : null; } },
+  { lib: "2050 : total III (actif circulant brut) = somme des lignes", forms: ["2050"], fn: g => { const s = "BL BN BP BR BT BV BX BZ CB CD CF CH".split(" ").reduce((a, k) => a + g("2050|" + k), 0); return Math.abs(g("2050|CJ") - s) > 100 ? "CJ " + fdFmt(g("2050|CJ"), {}) + " / somme " + fdFmt(s, {}) : null; } },
+  { lib: "2051 : résultat de l'exercice = résultat du compte de résultat", forms: ["2051"], fn: (g, h, C) => C.L["2053|HN"] != null && Math.abs(g("2051|DI") - C.L["2053|HN"]) > 100 ? "2051 DI " + fdFmt(g("2051|DI"), {}) + " / 2053 HN " + fdFmt(C.L["2053|HN"], {}) : null },
+  { lib: "2058-A : résultat comptable (WA / WS) = résultat du bilan (2051 DI)", forms: ["2058A", "2051"], fn: g => Math.abs((g("2058A|WA") - g("2058A|WS")) - g("2051|DI")) > 100 ? "WA − WS = " + fdFmt(g("2058A|WA") - g("2058A|WS"), {}) + " / DI = " + fdFmt(g("2051|DI"), {}) : null },
+  { lib: "2058-A : bénéfice ou déficit (XI/XJ) = total I − total II", forms: ["2058A"], fn: g => Math.abs((g("2058A|XI") - g("2058A|XJ")) - (g("2058A|WR") - g("2058A|XH"))) > 100 ? "XI − XJ = " + fdFmt(g("2058A|XI") - g("2058A|XJ"), {}) + " / WR − XH = " + fdFmt(g("2058A|WR") - g("2058A|XH"), {}) : null },
+  { lib: "2065 : bénéfices imposables = résultat fiscal 2058-A (XN)", forms: ["2065", "2058A"], fn: g => Math.abs(g("2065|z255_192") + g("2065|z255_385") - g("2058A|XN")) > 100 ? "2065 : " + fdFmt(g("2065|z255_192") + g("2065|z255_385"), {}) + " / XN : " + fdFmt(g("2058A|XN"), {}) : null },
+  { lib: "2065 : déficit = 2058-A (XO)", forms: ["2065", "2058A"], fn: g => Math.abs(g("2065|z255_510") - g("2058A|XO")) > 100 ? fdFmt(g("2065|z255_510"), {}) + " / " + fdFmt(g("2058A|XO"), {}) : null },
   { lib: "2065 : désignation et adresse de la société renseignées", forms: ["2065"], fn: (g, h, C, I, raw) => !raw("2065|z97_192") || !raw("2065|z111_192") ? "Complétez le cadre A (désignation, adresse)." : null },
-  { lib: "CA3 : total TVA brute (ligne 16) = lignes 08 à 5B", forms: ["CA3"], fn: g => { const s = ["08T", "09T", "9BT", "10T", "11T", "0600", "0602"].reduce((a, k) => a + g("CA3|" + k), 0); return Math.abs(g("CA3|16") - s) > 100 ? "Ligne 16 : " + fxFmt(g("CA3|16"), {}) + " / somme : " + fxFmt(s, {}) : null; } },
-  { lib: "CA3 : TVA due (TD) = ligne 16 − ligne 23", forms: ["CA3"], fn: g => { const d = Math.max(0, g("CA3|16") - g("CA3|p3.z187_465")); return Math.abs(g("CA3|8900") - d) > 100 ? "TD : " + fxFmt(g("CA3|8900"), {}) + " / calcul : " + fxFmt(d, {}) : null; } },
-  { lib: "CA3 : crédit (ligne 25) = ligne 23 − ligne 16", forms: ["CA3"], fn: g => { const d = Math.max(0, g("CA3|p3.z187_465") - g("CA3|16")); return Math.abs(g("CA3|0705") - d) > 100 ? "25 : " + fxFmt(g("CA3|0705"), {}) + " / calcul : " + fxFmt(d, {}) : null; } },
-  { lib: "2572 : IS au taux normal = base × taux", forms: ["2572"], fn: (g, h, C) => { const t = Math.round(g("2572|I-A01") * (C.Fc.isNormal || 25) / 100); return Math.abs(g("2572|140") - t) > 100 ? "140 : " + fxFmt(g("2572|140"), {}) + " / calcul : " + fxFmt(t, {}) : null; } },
-  { lib: "2572 : IS au taux réduit = base × taux réduit", forms: ["2572"], fn: (g, h, C) => { const t = Math.round(g("2572|I-A02") * (C.Fc.isReduit || 15) / 100); return Math.abs(g("2572|104") - t) > 100 ? "104 : " + fxFmt(g("2572|104"), {}) + " / calcul : " + fxFmt(t, {}) : null; } },
-  { lib: "2035 : total des recettes (AG) = AD + AE + AF", forms: ["2035A"], fn: g => Math.abs(g("2035A|AG") - (g("2035A|AD") + g("2035A|AE") + g("2035A|AF"))) > 100 ? "Écart " + fxFmt(g("2035A|AG") - (g("2035A|AD") + g("2035A|AE") + g("2035A|AF")), {}) : null },
+  { lib: "CA3 : total TVA brute (ligne 16) = lignes 08 à 5B", forms: ["CA3"], fn: g => { const s = ["08T", "09T", "9BT", "10T", "11T", "0600", "0602"].reduce((a, k) => a + g("CA3|" + k), 0); return Math.abs(g("CA3|16") - s) > 100 ? "Ligne 16 : " + fdFmt(g("CA3|16"), {}) + " / somme : " + fdFmt(s, {}) : null; } },
+  { lib: "CA3 : TVA due (TD) = ligne 16 − ligne 23", forms: ["CA3"], fn: g => { const d = Math.max(0, g("CA3|16") - g("CA3|p3.z187_465")); return Math.abs(g("CA3|8900") - d) > 100 ? "TD : " + fdFmt(g("CA3|8900"), {}) + " / calcul : " + fdFmt(d, {}) : null; } },
+  { lib: "CA3 : crédit (ligne 25) = ligne 23 − ligne 16", forms: ["CA3"], fn: g => { const d = Math.max(0, g("CA3|p3.z187_465") - g("CA3|16")); return Math.abs(g("CA3|0705") - d) > 100 ? "25 : " + fdFmt(g("CA3|0705"), {}) + " / calcul : " + fdFmt(d, {}) : null; } },
+  { lib: "2572 : IS au taux normal = base × taux", forms: ["2572"], fn: (g, h, C) => { const t = Math.round(g("2572|I-A01") * (C.Fc.isNormal || 25) / 100); return Math.abs(g("2572|140") - t) > 100 ? "140 : " + fdFmt(g("2572|140"), {}) + " / calcul : " + fdFmt(t, {}) : null; } },
+  { lib: "2572 : IS au taux réduit = base × taux réduit", forms: ["2572"], fn: (g, h, C) => { const t = Math.round(g("2572|I-A02") * (C.Fc.isReduit || 15) / 100); return Math.abs(g("2572|104") - t) > 100 ? "104 : " + fdFmt(g("2572|104"), {}) + " / calcul : " + fdFmt(t, {}) : null; } },
+  { lib: "2035 : total des recettes (AG) = AD + AE + AF", forms: ["2035A"], fn: g => Math.abs(g("2035A|AG") - (g("2035A|AD") + g("2035A|AE") + g("2035A|AF"))) > 100 ? "Écart " + fdFmt(g("2035A|AG") - (g("2035A|AD") + g("2035A|AE") + g("2035A|AF")), {}) : null },
   { lib: "DAS2 : bénéficiaires sans SIRET ni adresse", forms: ["DAS2"], fn: (g, h, C) => { const L = (C.das || []).filter(b => !b.siren || !b.adresse); return L.length ? L.map(b => b.nom).slice(0, 4).join(", ") + (L.length > 4 ? "…" : "") : null; } }
 ];
 /* ---------- ECF : compte rendu de mission (modèle reproduit) ---------- */
-const FX_ECF = (() => {
+const FD_ECF = (() => {
   const P = []; let p, y; const X = 30.5, W = 533.5, LW = 1;
   const page = () => { p = { w: 595.28, h: 841.89, R: [], L: [], T: [], I: [], F: [] }; P.push(p); y = 30; };
   const txt = (x, yy, s, sz, bold, col, anchor) => { const w = anchor === "c" ? 0 : 0; p.T.push([x, yy, sz, bold ? 6 : 5, s, 0].concat(col ? [col] : [])); return w; };
@@ -124,7 +124,7 @@ const FX_ECF = (() => {
   P.forEach(q => q.F.forEach(f => { if (f.a === undefined) delete f.a; }));
   return { t: "Compte rendu de mission ECF (examen de conformité fiscale)", p: P };
 })();
-FXT.ECF = FX_ECF; FXT_PACKS.ecf = 1;
+FXT.ECF = FD_ECF; FXT_PACKS.ecf = 1;
 (function () { /* correspondances ECF (liées au module ECF et à la comptabilité) */
   const st = n => `(ECFD().pts[${n}]||{}).st`; const o = {};
   Object.assign(o, { "pre.nom": "T:ECFD().mission.prest||''", "pre.adr": "T:ECFD().mission.prestAdr||''", "pre.prof": "T:ECFD().mission.qualite||''", "cli.siren": "T:S.siren||''", "cli.nom": "T:S.nom", "cli.adr": "T:S.adresse||''", "cli.forme": "T:S.forme||''", "cli.soc": "!/^EI/.test(S.forme||'')", "cli.ind": "/^EI/.test(S.forme||'')",
@@ -133,10 +133,10 @@ FXT.ECF = FX_ECF; FXT_PACKS.ecf = 1;
     "p5.nat": "T:/IS/.test(S.forme||'')||S.regimeIS?'Impôt société (IS)':'Impôt sur le revenu'", "p5.reg": "T:S.regimeIS==='RN'?'Réel normal':'Réel simplifié'", "p5.tva": "T:({RN_M:'Réel normal mensuel',RN_T:'Réel normal trimestriel',RSI:'Réel simplifié',FR:'Franchise'})[S.regimeTVA]||''",
     "p6.mt": "SOLDE('681')", "p6.me": "SOLDE('681')", "p7.mt": "SOLDE('6815','6865','6875')", "p7.me": "SOLDE('6815','6865','6875')", "p8.mt": "SC('408','4286','4386','4486')", "p8.me": "SC('408','4286','4386','4486')", "p9.mt": "SOLDE('67')", "p9.me": "SOLDE('67')" });
   for (let n = 1; n <= 10; n++) { o["p" + n + ".na"] = st(n) + "==='na'"; o["p" + n + ".ok"] = st(n) + "==='ok'"; o["p" + n + ".ko"] = st(n) + "==='ko'"; o["p" + n + ".typ"] = `T:(ECFD().pts[${n}]||{}).obs||''`; }
-  Object.entries(o).forEach(([k, v]) => { FX_MAP["ECF|" + k] = v; });
+  Object.entries(o).forEach(([k, v]) => { FD_MAP["ECF|" + k] = v; });
 })();
 function ECFD() { try { return ECF(); } catch (e) { return { mission: {}, pts: {}, cr: {} }; } }
 /* noms supplémentaires du langage de formules */
-(function () { const _ctx = fxCtx; fxCtx = function () { const C = _ctx.apply(this, arguments); if (!C._x) { C._x = 1; C.names = C.names.concat(["FISC", "BRAND", "MOIS", "ECFD", "FXY"]); } return C; };
-  const _ev = fxEval; fxEval = function (expr, C, get) { if (!C._xv) { C._xv = 1; C.base = Object.assign({}, C.base, { FISC: C.Fc, BRAND: brNomSafeFx(), MOIS: String(typeof monthsBetween === "function" ? monthsBetween(C.ex.debut, C.ex.fin) : 12), ECFD, FXY: fxDasY() }); } return _ev(expr, C, get); };
-  const _fv = fxValues; fxValues = function (id, I, C) { const o = _fv.apply(this, arguments); o._rep = k => FX_REP_VAL(k, C, o._get); return o; }; })();
+(function () { const _ctx = fdCtx; fdCtx = function () { const C = _ctx.apply(this, arguments); if (!C._x) { C._x = 1; C.names = C.names.concat(["FISC", "BRAND", "MOIS", "ECFD", "FXY"]); } return C; };
+  const _ev = fdEval; fdEval = function (expr, C, get) { if (!C._xv) { C._xv = 1; C.base = Object.assign({}, C.base, { FISC: C.Fc, BRAND: brNomSafeFx(), MOIS: String(typeof monthsBetween === "function" ? monthsBetween(C.ex.debut, C.ex.fin) : 12), ECFD, FXY: fdDasY() }); } return _ev(expr, C, get); };
+  const _fv = fdValues; fdValues = function (id, I, C) { const o = _fv.apply(this, arguments); o._rep = k => FD_REP_VAL(k, C, o._get); return o; }; })();
