@@ -4,14 +4,14 @@
    suppression définitive. Les dossiers de démonstration sont supprimés directement.
    ============================================================ */
 function cbList() { INDEX.corbeille ||= []; return INDEX.corbeille; }
-(function () { const _del = Store.deleteDossier.bind(Store); Store._delDef = _del;
+(function () { const _del0 = Store.deleteDossier.bind(Store); const _del = async id => { INDEX.deleted = [...new Set((INDEX.deleted || []).concat([id]))].slice(-1000); INDEX.dossiers = (INDEX.dossiers || []).filter(d => d.id !== id); return _del0(id); }; Store._delDef = _del;
   Store.deleteDossier = async function (id) { const x = (INDEX.dossiers || []).find(d => d.id === id); if (!x || x.demo || /d[ée]monstration/i.test(x.nom || "")) return _del(id);
     try { await Store.flush(); } catch (e) { }
     let sum = x.sum || {}; try { if (S && S.id === id) sum = Object.assign({}, sum, dossierSummary()); } catch (e) { }
     let who = ""; try { who = typeof xsMe === "function" ? xsMe() : prvMe(); } catch (e) { }
     const L = cbList().filter(c => c.id !== id); L.unshift({ id, nom: x.nom, entry: deep(x), siren: sum.siren || "", forme: sum.forme || "", ex: sum.ex || "", nEcr: sum.nEcr != null ? sum.nEcr : (S && S.id === id ? E.length : null), at: new Date().toISOString(), by: who || UI.userName || "Utilisateur" }); INDEX.corbeille = L; }; })();
 async function cbRestore(id, open) { const L = cbList(); const c = L.find(x => x.id === id); if (!c) return; const r = await Store.loadDossier(id); if (!r) { toast("Les données de ce dossier sont introuvables : il a peut-être été supprimé définitivement ailleurs."); return; }
-  INDEX.corbeille = L.filter(x => x.id !== id); INDEX.dossiers = (INDEX.dossiers || []).filter(d => d.id !== id); INDEX.dossiers.push(Object.assign({}, c.entry || { id, nom: c.nom }, { restoredAt: new Date().toISOString() }));
+  INDEX.corbeille = L.filter(x => x.id !== id); INDEX.deleted = (INDEX.deleted || []).filter(x => x !== id); INDEX.dossiers = (INDEX.dossiers || []).filter(d => d.id !== id); INDEX.dossiers.push(Object.assign({}, c.entry || { id, nom: c.nom }, { restoredAt: new Date().toISOString() }));
   if (open) { try { await Store.flush(); } catch (e) { } setDossier(r.meta, r.ecr); INDEX.current = id; await saveIndex(); go("dashboard"); toast("« " + c.nom + " » réouvert : toutes ses données sont restaurées."); }
   else { await Store.setIndex(INDEX); render(); toast("« " + c.nom + " » restauré dans Mes sociétés."); } }
 const cbDT = iso => { const d = new Date(iso); return frDate(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0")) + " à " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };

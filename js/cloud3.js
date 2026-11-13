@@ -124,7 +124,7 @@ if (window.SC_CLOUD_ON) (function () {
           for (const c of EQ_SUB) { const q = await db.doc(T.base + "/d_" + id).collection(c).get(); for (const x of q.docs) await raw.doc(me + "/d_" + id).collection(c).doc(x.id).set(x.data()); }
           back.push({ id, nom: meta.nom || "Société" }); }
         await eqWipe(T.base, E0.dossiers); } catch (e) { console.warn("restore", e); } }
-    if (back.length) { INDEX.dossiers = INDEX.dossiers || []; back.forEach(b => { if (!INDEX.dossiers.some(x => x.id === b.id)) INDEX.dossiers.push(b); }); try { await saveIndex(); } catch (e) { }
+    if (back.length) { INDEX.dossiers = INDEX.dossiers || []; back.forEach(b => { if (!INDEX.dossiers.some(x => x.id === b.id) && !dosGone(INDEX, b.id)) INDEX.dossiers.push(b); }); try { await saveIndex(); } catch (e) { }
       toast("Société récupérée dans votre liste : " + back.map(b => b.nom).join(", ")); try { render(); } catch (e) { } }
     try { await ref.delete(); } catch (e) { } }
   (function wait() { if (!window.__SC_READY) return setTimeout(wait, 500); setTimeout(() => restore().catch(() => { }), 800); })();

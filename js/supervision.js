@@ -5,7 +5,7 @@ async function supIndex(uid) {
   const base = "data/users/" + uid; let ix = null;
   try { const s = await Store.db.doc(base + "/index").get(); if (s.exists) ix = plain(s.data()); } catch (e) { }
   ix = ix || { dossiers: [], current: null }; ix.dossiers ||= [];
-  try { const q = await Store.db.collection(base).get(); q.docs.forEach(d => { if (!d.id.startsWith("d_")) return; const id = d.id.slice(2); const v = d.data() || {}; if (!ix.dossiers.some(x => x.id === id) && v.nom) ix.dossiers.push({ id, nom: v.nom, demo: !!v.demo }); }); } catch (e) { }
+  try { const q = await Store.db.collection(base).get(); q.docs.forEach(d => { if (!d.id.startsWith("d_")) return; const id = d.id.slice(2); const v = d.data() || {}; if (!ix.dossiers.some(x => x.id === id) && !dosGone(ix, id) && v.nom) ix.dossiers.push({ id, nom: v.nom, demo: !!v.demo }); }); } catch (e) { }
   return ix;
 }
 function supLoad(uid) { const st = UI.sub.lic ||= {}; st.ix ||= {}; if (st.ix[uid] || Store.mode !== "db" || !Store.db) return st.ix[uid]; st.ix[uid] = { load: true, dossiers: [] }; supIndex(uid).then(ix => { st.ix[uid] = ix; render(); }); return st.ix[uid]; }

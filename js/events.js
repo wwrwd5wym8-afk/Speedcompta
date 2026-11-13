@@ -2,9 +2,11 @@
    Actions et démarrage
    ============================================================ */
 let INDEX = { dossiers: [], current: null };
+/* dossier supprimé (corbeille) ou effacé définitivement : ne jamais le réintégrer automatiquement */
+function dosGone(ix, id) { ix = ix || INDEX; return (ix.corbeille || []).some(c => c.id === id) || (ix.deleted || []).includes(id); }
 async function recoverDossiers(ix) {
   const q = await Store.db.collection(Store.base()).get(); let n = 0; if (!ix) return 0; ix.dossiers ||= [];
-  for (const d of q.docs) { if (!d.id.startsWith("d_")) continue; const id = d.id.slice(2); if (ix.dossiers.some(x => x.id === id)) continue; const v = d.data() || {}; if (v.demo || !v.nom) continue; ix.dossiers.push({ id, nom: v.nom, demo: false }); n++; }
+  for (const d of q.docs) { if (!d.id.startsWith("d_")) continue; const id = d.id.slice(2); if (ix.dossiers.some(x => x.id === id) || dosGone(ix, id)) continue; const v = d.data() || {}; if (v.demo || !v.nom) continue; ix.dossiers.push({ id, nom: v.nom, demo: false }); n++; }
   if (n) { try { await Store.setIndex(ix); } catch (e) { } } return n;
 }
 async function saveIndex() { if (!S) return; let sum = null; try { sum = dossierSummary(); } catch (e) { } INDEX.dossiers = INDEX.dossiers.map(x => x.id === S.id ? { id: S.id, nom: S.nom, demo: !!S.demo, sum } : x); if (!INDEX.dossiers.find(x => x.id === S.id)) INDEX.dossiers.push({ id: S.id, nom: S.nom, demo: !!S.demo, sum }); INDEX.current = S.id; try { await Store.setIndex(INDEX); } catch (e) { } }
