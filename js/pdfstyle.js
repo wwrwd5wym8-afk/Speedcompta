@@ -31,8 +31,8 @@ Report.prototype.table = function (cols, rows, head) {
   drawHead(); let zebra = 0;
   for (const r of rows) {
     const st = r.style || ""; const cells = r.cells || r; const size = (st === "grp" ? 8.5 : st === "tot" ? 8.6 : 8) * fs; const bold = /grp|sub|tot|big/.test(st);
-    const lines = wrap(cells[li], size, bold); const h0 = Math.max(15, lines.length * (size + 2.5) + 6); const h = h0 * hs; const ty = this.y + (h - h0) / 2;
-    if (this.y + h > p.H - 50) { p.addPage(); this.header(); drawHead(); }
+    const lines = wrap(cells[li], size, bold); const h0 = Math.max(15, lines.length * (size + 2.5) + 6); const h = h0 * hs; let ty = this.y + (h - h0) / 2;
+    if (this.y + h > p.H - 50) { p.addPage(); this.header(); drawHead(); ty = this.y + (h - h0) / 2; }
     if (!st) { if (zebra++ % 2) p.rect(M, this.y - 1, tw, h, PC.zebra); } else zebra = 0;
     if (st === "grp") { p.rect(M, this.y - 1, tw, h, PC.grpBg); p.rect(M, this.y - 1, 3, h, PC.blue); }
     if (st === "sub" || st === "hl") p.rect(M, this.y - 1, tw, h, PC.grid);
