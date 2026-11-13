@@ -109,7 +109,7 @@ if (window.SC_CLOUD_ON) (function () {
 
   /* ---------- vitrine : les offres publiées pour l'écran de connexion ---------- */
   async function pubOffres() { if (!isAdmin() || !Store.db) return; try { const V = venteCfg(); const b = CONFIG.branding || {};
-    const doc = { nom: b.nom || "Speedix", slogan: b.slogan || "", actif: V.actif !== false, essai: V.essai || "", email: V.email || "", tel: V.tel || "", societe: V.societe || "",
+    const doc = { nom: b.nom || "Speedix", slogan: b.slogan || "", actif: V.actif !== false, essai: V.essai || "", login: V.offLogin || "lien", email: V.email || "", tel: V.tel || "", societe: V.societe || "",
       offres: (V.offres || []).map(o => ({ id: o.id, nom: o.nom, prix: o.prix, periode: o.periode, desc: o.desc || "", inclus: o.inclus || [], top: !!o.top, lien: o.lien || "" })), maj: new Date().toISOString() };
     const raw = Store.rawDb || Store.db; const ref = raw.doc("public/offres"); const s = await ref.get(); const old = s.exists ? plain(s.data()) : null;
     if (!old || JSON.stringify(Object.assign({}, old, { maj: 0 })) !== JSON.stringify(Object.assign({}, doc, { maj: 0 }))) await ref.set(doc); } catch (e) { console.warn("offres", e); } }

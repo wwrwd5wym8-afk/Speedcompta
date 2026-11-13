@@ -64,18 +64,22 @@
     return m || "Une erreur est survenue."; }
   function screen(mode, msg, ok) { const app = document.getElementById("app"); if (!app) return;
     const T = { login: ["Connexion", "Se connecter"], signup: ["Première connexion", "Créer mon mot de passe"], recover: ["Mot de passe oublié", "Recevoir le lien"], reset: ["Nouveau mot de passe", "Enregistrer"] }[mode];
-    app.innerHTML = `<div class="cl-wrap"><form class="cl-card" id="clForm" novalidate>
+    app.innerHTML = `<div class="cl-wrap"><div class="cl-shell"><aside class="cl-side" aria-hidden="true"><div class="cl-glow"></div><div class="cl-side-in"><div class="cl-side-logo"><img src="${ico()}" alt="" width="44" height="44"><span>${(() => { try { return String((typeof nom === "function" ? nom() : "") || (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || "Speedix").replace(/[<&]/g, ""); } catch (e) { return "Speedix"; } })()}</span></div>
+      <h2>Votre comptabilité, <em>claire et pilotée</em>.</h2><p>Un seul espace pour tenir, réviser, déclarer et conseiller.</p>
+      <ul><li><b>⚡</b><span>Saisie, banque et TVA automatisées</span></li><li><b>📊</b><span>Tableaux de bord et dossiers prêts à remettre</span></li><li><b>🔒</b><span>Données chiffrées, accès par code personnel</span></li></ul>
+      <div class="cl-side-f">Simple · Rapide · Efficace</div></div></aside><form class="cl-card" id="clForm" novalidate>
       <div class="cl-brand"><img src="${ico()}" alt="" width="56" height="56"><div><b>${(() => { const n = String((typeof nom === "function" ? nom() : "") || (() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || ""; } catch (e) { return ""; } })() || (typeof CONFIG !== "undefined" && CONFIG && CONFIG.branding && CONFIG.branding.nom) || "Speedix"); const m = n.match(/^([A-ZÀ-Ü]?[a-zà-ÿ]+)([A-ZÀ-Ü].*)$/); return m ? m[1].replace(/[<&]/g, "") + "<i>" + m[2].replace(/[<&]/g, "") + "</i>" : n.replace(/[<&]/g, ""); })()}</b><span>Simple · Rapide · Efficace</span></div></div>
       <h1>${T[0]}</h1>
       ${mode === "signup" ? `<p class="cl-sub">Utilisez l'adresse e-mail à laquelle votre cabinet vous a invité, puis choisissez votre mot de passe.</p>` : mode === "recover" ? `<p class="cl-sub">Indiquez votre adresse e-mail : vous recevrez un lien pour choisir un nouveau mot de passe.</p>` : ""}
       ${mode !== "reset" ? `<label>Adresse e-mail<input id="clEmail" type="email" autocomplete="email" inputmode="email" required value="${(screen._email || "").replace(/"/g, "&quot;")}"></label>` : ""}
-      ${mode !== "recover" ? `<label>${mode === "login" ? "Code d'accès ou mot de passe" : "Mot de passe"}<input id="clPass" type="password" autocomplete="${mode === "login" ? "current-password" : "new-password"}" ${mode === "login" ? 'placeholder="SC-XXX-XXXX-XXXX"' : 'minlength="8"'} required></label>` : ""}
+      ${mode !== "recover" ? `<label>${mode === "login" ? "Code d'accès ou mot de passe" : "Mot de passe"}<input id="clPass" type="password" autocomplete="${mode === "login" ? "current-password" : "new-password"}" ${mode === "login" ? 'placeholder="SC-XXX-XXXX-XXXX"' : 'minlength="8"'} required><button type="button" class="cl-eye" data-eye="clPass" title="Afficher ou masquer" aria-label="Afficher ou masquer le mot de passe">👁</button></label>` : ""}
       ${mode === "signup" || mode === "reset" ? `<label>Confirmer le mot de passe<input id="clPass2" type="password" autocomplete="new-password" minlength="8" required></label>` : ""}
       ${msg ? `<div class="cl-msg ${ok ? "ok" : ""}">${msg}</div>` : ""}
       <button class="cl-btn" type="submit">${T[1]}</button>
       ${mode === "login" ? `<p class="cl-sub" style="margin-top:12px">Client : saisissez l'e-mail et le <b>code d'accès</b> reçus de votre cabinet.</p>` : ""}<div class="cl-links">${mode === "login" ? `<a data-cl="recover">Mot de passe oublié (cabinet)</a>` : mode === "reset" ? "" : `<a data-cl="login">← Retour à la connexion</a>`}</div>
-    </form>${mode === "login" ? '<div id="clOffres"></div>' : ""}</div>`;
+    <div class="cl-safe">🔒 Connexion sécurisée · vos données restent privées</div></form></div>${mode === "login" ? '<div id="clOffres"></div>' : ""}</div>`;
     if (mode === "login") offres();
+    app.querySelectorAll("[data-eye]").forEach(b => b.addEventListener("click", () => { const i = document.getElementById(b.dataset.eye); if (i) { i.type = i.type === "password" ? "text" : "password"; b.classList.toggle("on", i.type === "text"); } }));
     app.querySelectorAll("[data-cl]").forEach(a => a.addEventListener("click", () => { const e = document.getElementById("clEmail"); if (e) screen._email = e.value; screen(a.dataset.cl); }));
     const f = document.getElementById("clForm"); const first = f.querySelector("input"); if (first && !first.value) setTimeout(() => first.focus(), 50);
     f.addEventListener("submit", async ev => { ev.preventDefault(); const btn = f.querySelector(".cl-btn"); const em = (document.getElementById("clEmail") || {}).value; const pw = (document.getElementById("clPass") || {}).value; const pw2 = (document.getElementById("clPass2") || {}).value;
@@ -103,6 +107,9 @@
   async function offres() { const box = () => document.getElementById("clOffres"); try {
       if (!OFF) { const r = await fetch(URL0 + "/rest/v1/sc_docs?select=data&path=eq." + encodeURIComponent("public/offres"), { headers: { apikey: KEY } }); const j = r.ok ? await r.json() : []; OFF = (j[0] && j[0].data) || { offres: [] }; }
       const b = box(); if (!b || !OFF.actif || !(OFF.offres || []).length) return;
+      const how = OFF.login || "lien"; if (how === "non") { b.innerHTML = ""; return; }
+      const wanted = how === "auto" || offres.open || /[?&#]offres\b/.test(location.search + location.hash);
+      if (!wanted) { b.innerHTML = `<button type="button" class="cl-offbtn" id="clOffBtn">Pas encore client ? <b>Découvrir nos offres</b> ›</button>`; const k = document.getElementById("clOffBtn"); if (k) k.addEventListener("click", () => { offres.open = true; offres(); }); return; }
       if (!document.getElementById("clOffCss")) { const st = document.createElement("style"); st.id = "clOffCss"; st.textContent = `
         .cl-wrap{display:flex!important;flex-direction:column;align-items:center;gap:34px}
         #clOffres{width:min(1040px,100%);animation:clOffIn .6s ease-out both}@keyframes clOffIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -119,9 +126,10 @@
       const per = p => p === "an" ? "HT / an" : p === "unique" ? "HT, une fois" : "HT / mois";
       const prix = c => { const v = (Number(c) || 0) / 100; return v.toLocaleString("fr-FR", { maximumFractionDigits: v % 1 ? 2 : 0 }) + " €"; };
       const act = o => o.lien ? `<a class="clo-a" href="${e(o.lien)}" target="_blank" rel="noopener">Souscrire</a>` : OFF.email ? `<a class="clo-a" href="mailto:${e(OFF.email)}?subject=${encodeURIComponent("Offre " + o.nom + " - " + (OFF.nom || "Speedix"))}&body=${encodeURIComponent("Bonjour,\n\nJe souhaite souscrire à l'offre " + o.nom + ".\n\nNom / société :\nTéléphone :\n\nMerci.")}">Choisir cette offre</a>` : "";
-      b.innerHTML = `<div class="clo-h"><h2>Nos offres</h2><p>Pas encore client ? Choisissez votre formule : nous créons votre espace et vous recevez votre code d'accès.</p></div>
+      b.innerHTML = `<div class="clo-h">${how !== "auto" ? `<button type="button" class="cl-offx" id="clOffX" title="Masquer les offres">✕</button>` : ""}<h2>Nos offres</h2><p>Pas encore client ? Choisissez votre formule : nous créons votre espace et vous recevez votre code d'accès.</p></div>
         <div class="clo-g">${OFF.offres.map(o => `<div class="clo-c ${o.top ? "top" : ""}">${o.top ? '<span class="clo-b">Le plus choisi</span>' : ""}<div class="clo-n">${e(o.nom)}</div><div class="clo-p">${prix(o.prix)} <small>${per(o.periode)}</small></div>${o.desc ? `<div class="clo-d">${e(o.desc)}</div>` : ""}<ul>${(o.inclus || []).map(x => `<li>${e(x)}</li>`).join("")}</ul>${act(o)}</div>`).join("")}</div>
         ${OFF.email || OFF.tel ? `<div class="clo-f">Une question ? ${OFF.email ? `<a href="mailto:${e(OFF.email)}">${e(OFF.email)}</a>` : ""}${OFF.email && OFF.tel ? " · " : ""}${OFF.tel ? `<a href="tel:${e(OFF.tel)}">${e(OFF.tel)}</a>` : ""}</div>` : ""}`;
+      const x0 = document.getElementById("clOffX"); if (x0) x0.addEventListener("click", () => { offres.open = false; offres(); });
     } catch (x) { } }
 
   /* retour d'un lien e-mail (confirmation ou nouveau mot de passe) */
