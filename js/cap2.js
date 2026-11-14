@@ -90,7 +90,7 @@ const CQ2_C4 = [{ wrap: 1 }, { w: 78, align: "right" }, { w: 78, align: "right" 
 const CQ2_C3 = [{ wrap: 1 }, { w: 90, align: "right" }, { w: 90, align: "right" }, { w: 90, align: "right" }];
 const CQ2_C2 = [{ wrap: 1 }, { w: 110, align: "right" }, { w: 110, align: "right" }];
 function cq2Rows(rows) { const z = cq2St().opt.zero === "1"; return rows.filter(r => { if (!r || r.keep || z) return !!r; const c = r.cells || r; return r.style || c.slice(1).some(v => v && v !== "0" && v !== "0,00"); }); }
-const cq2Com = ctx => { ctx.R.y += 2; ctx.R.para("Commentaires : " + (cq2St().texts["c_" + ctx.cur] || "néant."), { size: 7.5 }); };
+var cq2Com = ctx => { ctx.R.y += 2; ctx.R.para("Commentaires : " + (cq2St().texts["c_" + ctx.cur] || "néant."), { size: 7.5 }); };
 /* bilan actif / passif / compte de résultat (réutilisés pour N-1) */
 function cq2BilanA(ctx, ex, pv, title) { const { R } = ctx; const b = bilan(ex), bp = pv ? bilan(pv) : null; ctx.page(title, pv ? "Du " + frDate(ex.debut) + " au " + frDate(ex.fin) + " · comparé au " + frDate(pv.fin) : "Au " + frDate(ex.fin), "etats");
   const rows = []; let tb = 0, ta = 0, tn = 0, tp = 0; ACTIF.forEach(([g, L]) => { let sb = 0, sa = 0, sn = 0, sp = 0; const lines = L.map(([k, l]) => { const o = b.get(k), q = bp ? bp.get(k) : { val: 0 }; sb += o.brut; sa += o.am; sn += o.val; sp += q.val; return { cells: [l, cq2N(o.brut), cq2N(o.am), cq2N(o.val), bp ? cq2N(q.val) : ""], ind: 1 }; });
