@@ -12,7 +12,7 @@ const NF0 = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 const eur = c => NF.format((c || 0) / 100);
 const eur0 = c => NF0.format(Math.round((c || 0) / 100)) + " €";
 const eurz = c => c ? NF.format(c / 100) : "";
-const cents = v => { if (v === "" || v == null) return 0; if (typeof v === "number") return Math.round(v * 100); const s = String(v).replace(/\s| |€/g, "").replace(",", "."); const n = parseFloat(s); return isNaN(n) ? 0 : Math.round(n * 100); };
+const cents = v => { if (v === "" || v == null) return 0; if (typeof v === "number") return Math.round(v * 100); let s = String(v).replace(/\s| |€/g, ""); if (s.includes(",") && s.includes(".") && s.lastIndexOf(".") > s.lastIndexOf(",")) s = s.replace(/,/g, ""); else if (s.includes(",")) s = s.replace(/\./g, ""); else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, ""); s = s.replace(",", "."); const n = parseFloat(s); return isNaN(n) ? 0 : Math.round(n * 100); };
 const toIn = c => c ? (c / 100).toFixed(2).replace(".", ",") : "";
 const todayISO = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 const frDate = iso => iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) + "/" + iso.slice(0, 4) : "";
