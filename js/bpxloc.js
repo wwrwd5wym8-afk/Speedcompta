@@ -66,6 +66,7 @@ function bpxLocVarBlocks(p, C) { if (!C.locVar) return []; const V = C.locVar, i
     { t: "table", head: ["Indicateur"].concat(Y.map(y => YR[y])), rows: r("Chiffre d'affaires", A.CA, B.CA).concat(A.ext && B.ext ? r("Charges externes", A.ext, B.ext) : [], r("Résultat net", A.rn, B.rn), r("Capacité d'autofinancement", A.caf, B.caf), r("Trésorerie fin d'année", A.treso, B.treso)), name: "Variante", cols: 1 }]; }
 /* ---------- actions ---------- */
 Object.assign(F2ACT, {
+  bpxPR: el => { const p = bpxCur(); const l = p.pers[+el.dataset.i]; if (l.vb) l.vb[+el.dataset.y] = null; Store.touch(); render(); },
   bpxYR: el => { const x = bpxRec(el.dataset.k, el.dataset.i); const y = +el.dataset.y; if (x.vo) x.vo[y] = false; if (x.v) { if (y === 0) x.v[0] = 0; else x.v[y] = null; } Store.touch(); render(); },
   bpxLocAdd: () => { const p = bpxCur(); (p.loc ||= []).push({ lib: "Location", prix: 0, base: "ttc", tvaT: 20, per: "j", nper: 365, occ: 100, nb: 1, an: 1, m0: 1, g: 0, biens: [] }); Store.touch(); render(); },
   bpxLocDel: el => { const p = bpxCur(); p.loc.splice(+el.dataset.i, 1); Store.touch(); render(); },
@@ -73,6 +74,7 @@ Object.assign(F2ACT, {
   bpxLocUnlink: el => { const p = bpxCur(); const l = p.loc[+el.dataset.i]; l.biens = (l.biens || []).filter(b => b !== +el.dataset.b); Store.touch(); render(); }
 });
 Object.assign(F2CHG, {
+  bpxPV: el => { const p = bpxCur(); const l = p.pers[+el.dataset.i]; const y = +el.dataset.y; l.vb ||= []; l.vb[y] = String(el.value).trim() === "" ? null : cents(el.value); Store.touch(); render(); },
   bpxInvTtc: el => { const p = bpxCur(); const x = p.inv[+el.dataset.i]; x.ttc = cents(el.value); bpxInvFromTTC(p, x); Store.touch(); render(); },
   bpxInvRate: el => { const p = bpxCur(); const x = p.inv[+el.dataset.i]; const ttc = bpxInvTTC(p, x); x.tvaT = Number(el.value); x.ttc = ttc; bpxInvFromTTC(p, x); Store.touch(); render(); },
   bpxLoc: el => { const p = bpxCur(); const l = p.loc[+el.dataset.i]; const f = el.dataset.f, t = el.dataset.t; l[f] = t === "eur" ? cents(el.value) : t === "num" ? Number(String(el.value).replace(/\s/g, "").replace(",", ".")) || 0 : (/^(an|m0|tvaT)$/.test(f) ? Number(el.value) : el.value); if (f === "per") l.nper = BPX_PER[l.per][1]; Store.touch(); render(); },
