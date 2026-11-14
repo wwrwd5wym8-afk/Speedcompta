@@ -18,13 +18,13 @@ function cnCtx(doc) { const { D, D1 } = rdxFin(); const T = (CN_TPL.find(t => t[
   add("Arbitrer entre salaire et dividendes", "Rémunération", "haute", 0, "Comparer le coût global et le net perçu de chaque combinaison (onglet Rémunération du dirigeant du module Conseil).", ["rem", "fisc", "diag"]);
   add("Mettre en place une épargne salariale (PEE, intéressement)", "Rémunération", "moyenne", 0, "Rémunération complémentaire exonérée de charges sociales patronales et d'impôt sur le revenu sous conditions de blocage.", ["rem", "fisc"]);
   add("Comparer les formes juridiques et les régimes", "Juridique", "haute", 0, "Simuler entreprise individuelle, SARL et SAS (IR ou IS) sur le même bénéfice : charges sociales, impôt, protection sociale.", ["statut"]);
-  add("Construire un plan de financement à trois ans", "Financement", "haute", 0, "Bâtir le dossier prévisionnel (module Conseil › Dossier prévisionnel) avant toute demande de prêt ou de subvention.", ["crois"]);
+  add("Construire un plan de financement à trois ans", "Financement", "haute", 0, "Bâtir le dossier prévisionnel (module Conseil › Finance › Business plan › Dossier prévisionnel complet) avant toute demande de prêt ou de subvention.", ["crois"]);
   add("Rechercher les aides et subventions mobilisables", "Financement", "moyenne", 0, "Aides régionales, prêts d'honneur, crédits d'impôt (innovation, recherche) selon le projet.", ["crois", "start"]);
   add("Établir un plan de trésorerie sur 13 semaines", "Trésorerie", "haute", 0, "Suivre chaque semaine les encaissements et décaissements pour anticiper les tensions.", ["diff", "treso"]);
   add("Demander un étalement des dettes fiscales et sociales", "Difficultés", "haute", 0, "Saisir la commission des chefs des services financiers (CCSF) ou l'URSSAF pour un échéancier.", ["diff"]);
   add("Envisager une procédure amiable (mandat ad hoc, conciliation)", "Difficultés", "moyenne", 0, "Négocier avec les créanciers sous l'égide du tribunal, de façon confidentielle.", ["diff"]);
   add("Vérifier les crédits et réductions d'impôt accessibles", "Fiscalité", "moyenne", 0, "Crédits d'impôt recherche, innovation, formation du dirigeant, mécénat ; amortissements exceptionnels.", ["fisc"]);
-  add("Faire évaluer l'entreprise", "Transmission", "haute", 0, "Disposer d'une valeur argumentée avant toute discussion (Conseil › Rapport d'évaluation).", ["trans"]);
+  add("Faire évaluer l'entreprise", "Transmission", "haute", 0, "Disposer d'une valeur argumentée avant toute discussion (Conseil › Finance › Évaluation d'entreprise › Rapport d'évaluation).", ["trans"]);
   add("Étudier la création d'une holding et le pacte Dutreil", "Transmission", "moyenne", 0, "Réorganiser la détention des titres et réduire le coût fiscal d'une transmission familiale.", ["trans"]);
   const plan = (typeof cnsSt === "function" ? cnsSt().plan : []).filter(x => x.st !== "fait");
   return { D, D1, T, dso, dpo, tE, aut, lev, rnb, reco, plan, gain: reco.reduce((s, r) => s + r.gain, 0) }; }
