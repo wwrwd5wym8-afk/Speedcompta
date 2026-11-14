@@ -371,7 +371,10 @@ const Store = {
     try {
       if (this.mode === "db") {
         const base = this.base() + "/d_" + id;
-        if (this.metaDirty) { this.metaDirty = false; await this.db.doc(base).set(S); }
+        if (this.metaDirty) { this.metaDirty = false;
+          /* un autre onglet ou appareil a pu modifier le dossier : on fusionne les projets au lieu de les écraser */
+          if (typeof scMergeRemote === "function" && S.id === id) { try { const r = await this.db.doc(base).get(); if (r.exists) { const n = scMergeRemote(S, plain(r.data())); if (n && typeof toast === "function") { toast(n + " élément(s) modifié(s) dans un autre onglet ou appareil ont été conservés."); if (typeof render === "function") setTimeout(render, 50); } } } catch (e) { } }
+          await this.db.doc(base).set(S); }
         for (const m of months) {
           const list = E.filter(e => e.date.slice(0, 7) === m);
           const ref = this.db.doc(base).collection("m").doc(m);
