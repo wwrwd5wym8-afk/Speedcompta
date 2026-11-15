@@ -8,7 +8,7 @@
    - densité des lignes : compacte / normale / aérée
    - réglages Oui/Non dans Paramètres et directement dans la barre
    ========================================================================== */
-const BRX_DEF = { auto: "1", natif: "0", bar: "1", dens: "norm", lay: "cote", help: "1", hs: 0.6 };
+const BRX_DEF = { ltb: "1", auto: "1", natif: "0", bar: "1", dens: "norm", lay: "cote", help: "1", hs: 0.6 };
 function brxP() { let p = {}; try { p = JSON.parse(localStorage.getItem("sc:brx") || "{}") || {}; } catch (e) { } return Object.assign({}, BRX_DEF, p); }
 function brxSave(p) { try { localStorage.setItem("sc:brx", JSON.stringify(p)); } catch (e) { } }
 function brxSet(k, v) { const p = brxP(); p[k] = v; brxSave(p); }
@@ -53,7 +53,7 @@ function brxTools(p, foc, open) {
     let h = _v.apply(this, arguments);
     const st = brState(); if ((st.mode && st.mode !== "rev") || h.indexOf('class="br-main') < 0) return h;
     const p = brxP(), foc = brxFocus(), open = brxBarOpen();
-    h = h.replace('<div class="br-wrap">', `<div class="br-wrap brx d-${p.dens} l-${p.lay}${open ? "" : " bx-c"}${p.help === "0" ? " bx-nohelp" : ""}">`);
+    h = h.replace('<div class="br-wrap">', `<div class="br-wrap brx d-${p.dens} l-${p.lay}${open ? "" : " bx-c"}${p.help === "0" ? " bx-nohelp" : ""}${p.ltb === "1" ? " lt-b" : ""}">`);
     h = h.replace('<span class="br-prog">', brxTools(p, foc, open) + '<span class="br-prog">');
     h = h.replace('<div class="br-bar">', '<div class="br-bar">' + brxChips(st));
     return h;
@@ -135,6 +135,7 @@ document.addEventListener("keydown", ev => {
       ${yn("auto", "Ouvrir la balance en plein écran", "Menu, en-tête et onglets masqués : toute la hauteur pour les comptes. Touche F ou bouton « Plein écran » pour basculer, Échap pour revenir.")}
       ${yn("natif", "Plein écran du navigateur en plus", "Masque aussi la barre d'adresse et les onglets du navigateur (Échap pour sortir).")}
       ${yn("bar", "Paramètres repliés en une ligne", "Type, comptes, situation, journal… résumés en puces ; un clic (ou la touche P) pour les modifier.")}
+      ${yn("ltb", "Barre de lettrage en bas des mouvements", "Lignes sélectionnées, débit, crédit, écart et boutons Lettrer, Partiel, Réaffecter, Délettrer sur une ligne sous les mouvements : toute la largeur reste aux écritures. Non : colonne à droite.")}
       ${yn("help", "Afficher la ligne d'aide sous la balance")}
       ${sel("dens", "Densité des lignes", BRX_DENS)}
       ${sel("lay", "Disposition", BRX_LAY)}
@@ -150,7 +151,7 @@ body.brx-focus .app{grid-template-columns:minmax(0,1fr)!important}
 body.brx-focus .main{padding:0!important}
 body.brx-focus .main-in{max-width:none!important;padding:0!important;margin:0!important}
 body.brx-focus .brx{border-radius:0;border:0;min-height:100vh}
-body.brx-focus .ai-fab{opacity:.45;transform:scale(.82);transform-origin:right bottom;transition:opacity .15s}body.brx-focus .ai-fab:hover{opacity:1}
+body.brx-focus .ai-fab{right:0;bottom:auto!important;top:50%;height:auto;transform:translateY(-50%);border-radius:12px 0 0 12px;padding:10px 8px 10px 10px;max-width:38px;overflow:hidden;white-space:nowrap;font-size:13px;opacity:.75;transition:max-width .2s,opacity .15s}body.brx-focus .ai-fab:hover{opacity:1;max-width:180px}
 .brx .br-title{padding:5px 10px;gap:8px}
 .brx .br-prog{margin-left:6px}
 .bx-t{margin-left:auto;display:inline-flex;gap:6px;align-items:center}
@@ -195,6 +196,19 @@ body.brx-focus .brx .br-help{padding:3px 10px!important;font-size:11px}
 .bx-hg{position:absolute;height:10px;z-index:6;cursor:row-resize;touch-action:none}.bx-hg::after{content:"";position:absolute;left:0;right:0;top:4px;height:2px;background:transparent;transition:background .12s}
 .bx-hg:hover::after,.bx-hg.on::after{background:#4C3FB5}
 body.br-dragging-v{cursor:row-resize!important;user-select:none}
+.brx.lt-b .br-mvb{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto}
+.brx.lt-b .br-mvb>.br-scroll{grid-column:1;grid-row:1;min-height:0}
+.brx.lt-b .br-mvb>.brt-rail{grid-column:2;grid-row:1/3}
+.brx.lt-b .br-mvb>.lt-bar{grid-column:1;grid-row:2;width:auto!important;flex-direction:row!important;flex-wrap:wrap!important;align-items:center!important;justify-content:space-between;gap:8px 14px!important;border-left:0!important;border-top:1px solid var(--rule,#D2D9E6)!important;padding:7px 10px!important;background:linear-gradient(180deg,#F8FAFD,#F1F4FA);overflow:visible}
+.brx.lt-b .br-mvb>.lt-bar.on{background:linear-gradient(180deg,#EEF6F5,#E4F0EE);box-shadow:0 -6px 16px rgba(15,61,62,.10)!important}
+.brx.lt-b .br-mvb>.lt-bar .lt-info{flex-direction:row!important;flex-wrap:wrap;align-items:center;gap:4px 14px!important;padding:5px 10px!important;border-radius:999px!important}
+.brx.lt-b .br-mvb>.lt-bar .lt-info>span{gap:6px!important;align-items:baseline}
+.brx.lt-b .br-mvb>.lt-bar .lt-info .lt-n{display:inline!important;font-weight:700}
+.brx.lt-b .br-mvb>.lt-bar .lt-acts{flex-direction:row!important;flex-wrap:nowrap;margin-left:auto;align-items:center;gap:6px!important}
+.brx.lt-b .br-mvb>.lt-bar .lt-acts .btn{width:auto!important;padding:4px 10px;white-space:nowrap}
+.brx.l-cote .br-mvb>.lt-bar .lt-info{font-size:11.5px;gap:3px 10px!important}.brx.l-cote .br-mvb>.lt-bar .lt-acts .btn{padding:3px 8px;font-size:12px}
+.brx.lt-b .br-mvb>.lt-bar .lt-acts .btn.pri{order:9!important;padding:5px 16px!important;font-weight:700}
+body.brx-focus #toast{top:12px;bottom:auto}
 @media (max-width:1100px){.bx-full span{display:none}.brx.l-bas .br-main,.brx.l-seule .br-main{height:auto!important}}
 @media print{body.brx-focus .rail{display:none}}`;
   const s = document.createElement("style"); s.id = "brxCss"; s.textContent = css; document.head.appendChild(s);
