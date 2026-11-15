@@ -65,7 +65,7 @@ function bkReadXls(bytes) { const dv = new DataView(bytes.buffer, bytes.byteOffs
 async function bkReadBook(bytes, name) { const h4 = bytes.length > 8 ? [...bytes.subarray(0, 8)].map(b => b.toString(16).padStart(2, "0")).join("") : "";
   if (h4 === "d0cf11e0a1b11ae1") return bkReadXls(bytes);
   if (latin1(bytes.subarray(0, 2)) === "PK") { const files = await unzip(bytes); if (files.some(f => f.name === "content.xml") && !files.some(f => f.name === "workbook.xml")) return bkReadOds(bytes); if (files.some(f => f.name === "workbook.bin")) throw new Error("Le format Excel binaire (.xlsb) n'est pas lisible : enregistrez le fichier en .xlsx depuis Excel."); return bkReadXlsx(bytes); }
-  let text = utf8(bytes); if (text.includes("�")) text = latin1(bytes); if (/^\s*<(html|table)/i.test(text)) return [{ name: "Tableau", rows: [...text.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(m => [...m[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(c => xmlDec(c[1].replace(/<[^>]+>/g, "")).trim())) }];
+  let text = utf8(bytes); if (text.includes("\uFFFD")) text = latin1(bytes); if (/^\s*<(html|table)/i.test(text)) return [{ name: "Tableau", rows: [...text.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(m => [...m[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(c => xmlDec(c[1].replace(/<[^>]+>/g, "")).trim())) }];
   return [{ name: name || "Fichier", rows: readCSVRows(text) }]; }
 /* ---------- valeurs ---------- */
 const BK_MOIS = { janv: 1, jan: 1, fevr: 2, fev: 2, feb: 2, mars: 3, mar: 3, avr: 4, apr: 4, mai: 5, may: 5, juin: 6, jun: 6, juil: 7, jul: 7, aout: 8, aug: 8, sept: 9, sep: 9, oct: 10, nov: 11, dec: 12 };
