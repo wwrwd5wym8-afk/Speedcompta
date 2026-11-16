@@ -14,11 +14,11 @@
     save(s) { this.s = s; try { if (s) localStorage.setItem(LS, JSON.stringify(s)); else localStorage.removeItem(LS); } catch (e) { } },
     async call(path, body, method = "POST", token) { const r = await fetch(URL0 + "/auth/v1/" + path, { method, headers: Object.assign({ apikey: KEY, "Content-Type": "application/json" }, token ? { Authorization: "Bearer " + token } : {}), body: body ? JSON.stringify(body) : undefined });
       let j = {}; try { j = await r.json(); } catch (e) { } if (!r.ok) { const m = j.msg || j.error_description || j.message || j.error || ("Erreur " + r.status); const e = new Error(m); e.status = r.status; e.raw = j; throw e; } return j; },
-    keep(j) { if (!j || !j.access_token) return null; const s = { at: j.access_token, rt: j.refresh_token, exp: Date.now() + (j.expires_in || 3600) * 1000 - 60000, user: j.user ? { id: j.user.id, email: j.user.email } : (this.s && this.s.user) }; this.save(s); return s; },
+    keep(j) { if (!j || !j.access_token) return null; const s = { at: j.access_token, rt: j.refresh_token, exp: Date.now() + (j.expires_in || 3600) * 1000 - 60000, user: j.user ? { id: j.user.id, email: j.user.email } : (this.s && this.s.user) }; if (this.s && this.s.until) { s.until = this.s.until; s.slide = this.s.slide; } this.save(s); return s; },
     async login(email, password) { return this.keep(await this.call("token?grant_type=password", { email, password })); },
     async signup(email, password) { const j = await this.call("signup", { email, password }); if (j.access_token) return this.keep(j); if (j.session && j.session.access_token) return this.keep(j.session); return null; },
     async refresh() { if (!this.s || !this.s.rt) return null; try { return this.keep(await this.call("token?grant_type=refresh_token", { refresh_token: this.s.rt })); } catch (e) { if (e.status === 400 || e.status === 401) this.save(null); throw e; } },
-    async token() { if (!this.s) return null; if (Date.now() > this.s.exp) { try { await this.refresh(); } catch (e) { return null; } } return this.s && this.s.at; },
+    async token() { if (!this.s) return null; if (this.s.until && Date.now() > this.s.until) { this.save(null); return null; } if (this.s.slide && (!this.s._sl || Date.now() - this.s._sl > 6e4)) { this.s.until = Date.now() + 12 * 36e5; this.s._sl = Date.now(); this.save(this.s); } if (Date.now() > this.s.exp) { try { await this.refresh(); } catch (e) { return null; } } return this.s && this.s.at; },
     async recover(email) { return this.call("recover", { email, redirect_to: location.href.split("#")[0] }); },
     async setPassword(at, password) { return this.call("user", { password }, "PUT", at); },
     async logout() { try { const t = this.s && this.s.at; if (t) await this.call("logout", null, "POST", t); } catch (e) { } this.save(null); }
@@ -62,44 +62,243 @@
     if (/rate limit|too many/i.test(m)) return "Trop de tentatives : réessayez dans quelques minutes.";
     if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "Connexion impossible : vérifiez votre accès à internet.";
     return m || "Une erreur est survenue."; }
-  function screen(mode, msg, ok) { const app = document.getElementById("app"); if (!app) return;
-    const T = { login: ["Connexion", "Se connecter"], signup: ["Première connexion", "Créer mon mot de passe"], recover: ["Mot de passe oublié", "Recevoir le lien"], reset: ["Nouveau mot de passe", "Enregistrer"] }[mode];
-    app.innerHTML = `<div class="cl-wrap"><div class="cl-shell"><aside class="cl-side" aria-hidden="true"><div class="cl-glow"></div><div class="cl-side-in"><div class="cl-side-logo"><img src="${ico()}" alt="" width="44" height="44"><span>${(() => { try { return String((typeof nom === "function" ? nom() : "") || (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || "Speedix").replace(/[<&]/g, ""); } catch (e) { return "Speedix"; } })()}</span></div>
-      <h2>Votre comptabilité, <em>claire et pilotée</em>.</h2><p>Un seul espace pour tenir, réviser, déclarer et conseiller.</p>
-      <ul><li><b>⚡</b><span>Saisie, banque et TVA automatisées</span></li><li><b>📊</b><span>Tableaux de bord et dossiers prêts à remettre</span></li><li><b>🔒</b><span>Données chiffrées, accès par code personnel</span></li></ul>
-      <div class="cl-side-f">Simple · Rapide · Efficace</div></div></aside><form class="cl-card" id="clForm" novalidate>
-      <div class="cl-brand"><img src="${ico()}" alt="" width="56" height="56"><div><b>${(() => { const n = String((typeof nom === "function" ? nom() : "") || (() => { try { return (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || ""; } catch (e) { return ""; } })() || (typeof CONFIG !== "undefined" && CONFIG && CONFIG.branding && CONFIG.branding.nom) || "Speedix"); const m = n.match(/^([A-ZÀ-Ü]?[a-zà-ÿ]+)([A-ZÀ-Ü].*)$/); return m ? m[1].replace(/[<&]/g, "") + "<i>" + m[2].replace(/[<&]/g, "") + "</i>" : n.replace(/[<&]/g, ""); })()}</b><span>Simple · Rapide · Efficace</span></div></div>
-      <h1>${T[0]}</h1>
-      ${mode === "signup" ? `<p class="cl-sub">Utilisez l'adresse e-mail à laquelle votre cabinet vous a invité, puis choisissez votre mot de passe.</p>` : mode === "recover" ? `<p class="cl-sub">Indiquez votre adresse e-mail : vous recevrez un lien pour choisir un nouveau mot de passe.</p>` : ""}
-      ${mode !== "reset" ? `<label>Adresse e-mail<input id="clEmail" type="email" autocomplete="email" inputmode="email" required value="${(screen._email || "").replace(/"/g, "&quot;")}"></label>` : ""}
-      ${mode !== "recover" ? `<label>${mode === "login" ? "Code d'accès ou mot de passe" : "Mot de passe"}<input id="clPass" type="password" autocomplete="${mode === "login" ? "current-password" : "new-password"}" ${mode === "login" ? 'placeholder="SC-XXX-XXXX-XXXX"' : 'minlength="8"'} required><button type="button" class="cl-eye" data-eye="clPass" title="Afficher ou masquer" aria-label="Afficher ou masquer le mot de passe">👁</button></label>` : ""}
-      ${mode === "signup" || mode === "reset" ? `<label>Confirmer le mot de passe<input id="clPass2" type="password" autocomplete="new-password" minlength="8" required></label>` : ""}
-      ${msg ? `<div class="cl-msg ${ok ? "ok" : ""}">${msg}</div>` : ""}
-      <button class="cl-btn" type="submit">${T[1]}</button>
-      ${mode === "login" ? `<p class="cl-sub" style="margin-top:12px">Client : saisissez l'e-mail et le <b>code d'accès</b> reçus de votre cabinet.</p>` : ""}<div class="cl-links">${mode === "login" ? `<a data-cl="recover">Mot de passe oublié (cabinet)</a>` : mode === "reset" ? "" : `<a data-cl="login">← Retour à la connexion</a>`}</div>
-    <div class="cl-safe">🔒 Connexion sécurisée · vos données restent privées</div></form></div>${mode === "login" ? '<div id="clOffres"></div>' : ""}</div>`;
+  /* ================= écran de connexion en étapes (e-mail › mot de passe › vérification) ================= */
+  const LX = { email: "", keep: (() => { try { return localStorage.getItem("sc:keep30") === "1"; } catch (e) { return false; } })(), factor: null, enroll: null, tm: null, pol: null };
+  const lxE = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const lxRec = () => { try { return (JSON.parse(localStorage.getItem("sc:recentEmails") || "[]") || []).filter(Boolean).slice(0, 3); } catch (e) { return []; } };
+  const lxRecAdd = em => { try { const l = lxRec().filter(x => x !== em); l.unshift(em); localStorage.setItem("sc:recentEmails", JSON.stringify(l.slice(0, 3))); } catch (e) { } };
+  const lxRecDel = em => { try { localStorage.setItem("sc:recentEmails", JSON.stringify(lxRec().filter(x => x !== em))); } catch (e) { } };
+  const lxBrand = () => { let n = "Speedix"; try { n = String((typeof nom === "function" ? nom() : "") || (JSON.parse(localStorage.getItem("sc:brandCache") || "{}").nom) || "Speedix"); } catch (e) { } n = lxE(n); const m = n.match(/^(Speed)(.+)$/i); return m ? m[1] + "<em>" + m[2] + "</em>" : n; };
+  const lxCol = () => { let c = {}; try { c = JSON.parse(localStorage.getItem("sc:brandCache") || "{}") || {}; } catch (e) { } const ok = v => /^#[0-9a-f]{6}$/i.test(v || "") ? v : ""; const t = ok(c.bg) || "#0F3D3E", g = ok(c.acc) || "#F5B700"; return `--t:${t};--t2:${t};--g:${g}`; };
+  const lxMark = (big) => { let c = {}; try { c = JSON.parse(localStorage.getItem("sc:brandCache") || "{}") || {}; } catch (e) { } if (c.img) return `<img src="${lxE(c.img)}" alt="" style="${c.wide ? "width:auto;max-width:220px;border-radius:10px;box-shadow:none" : ""}">`; return window.SCLOGO ? `<span class="lx-mk">${SCLOGO.markSVG("#FBF8F2", (c.acc && /^#[0-9a-f]{6}$/i.test(c.acc)) ? c.acc : "#F5B700")}</span>` : `<img src="${ico()}" alt="">`; };
+  const lxTrustK = () => "sc:mfaTrust:" + ((Auth.s && Auth.s.user && Auth.s.user.id) || "");
+  const lxTrusted = () => { try { return Number(localStorage.getItem(lxTrustK()) || 0) > Date.now(); } catch (e) { return false; } };
+  const lxMeta = () => { if (!Auth.s) return; Auth.s.until = Date.now() + (LX.keep ? 30 * 864e5 : 12 * 36e5); Auth.s.slide = !LX.keep; Auth.save(Auth.s); };
+  async function lxPolicy() { if (LX.pol) return LX.pol; try { const r = await fetch(URL0 + "/rest/v1/sc_docs?select=data&path=eq." + encodeURIComponent("public/securite"), { headers: { apikey: KEY } }); const j = r.ok ? await r.json() : []; LX.pol = (j[0] && j[0].data) || {}; } catch (e) { LX.pol = {}; } return LX.pol; }
+  async function lxFactors() { const t = await Auth.token(); if (!t) return []; try { const u = await Auth.call("user", null, "GET", t); return (u.factors || []).filter(f => f.factor_type === "totp" && f.status === "verified"); } catch (e) { return []; } }
+  /* après le mot de passe : double authentification si activée, sinon entrée dans le logiciel */
+  async function lxAfter() {
+    const F = await lxFactors();
+    if (F.length && !lxTrusted()) { LX.factor = F[0].id; Auth.s.mfa = "mfa"; Auth.save(Auth.s); return screen("mfa"); }
+    const pol = await lxPolicy();
+    if (!F.length && pol.mfa === "1") { Auth.s.mfa = "enroll"; Auth.save(Auth.s); return screen("enroll"); }
+    if (Auth.s) { delete Auth.s.mfa; Auth.save(Auth.s); } screen._done();
+  }
+  window.SC_MFA = { factors: lxFactors, policy: async f => { if (f) LX.pol = null; return lxPolicy(); }, trustForget: () => { try { localStorage.removeItem(lxTrustK()); } catch (e) { } } };
+
+  function lxCss() { if (document.getElementById("lxCss")) return; const st = document.createElement("style"); st.id = "lxCss"; st.textContent = `
+.lx{--t:#0F3D3E;--t2:#13585A;--g:#F5B700;--c:#FBF8F2;position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#0F1B33;padding:0 16px 48px;box-sizing:border-box}
+.lx *{box-sizing:border-box}
+.lx-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:var(--c)}
+.lx-bg i{position:absolute;border-radius:50%;filter:blur(60px);opacity:.9;animation:lxDrift 24s ease-in-out infinite alternate}
+.lx-bg i:nth-child(1){width:60vw;height:60vw;left:-18vw;top:-24vw;background:radial-gradient(circle,rgba(19,88,90,.22) 0,rgba(19,88,90,0) 65%)}
+.lx-bg i:nth-child(2){width:46vw;height:46vw;left:28vw;top:-28vw;background:radial-gradient(circle,rgba(245,183,0,.24) 0,rgba(245,183,0,0) 65%);animation-duration:28s}
+.lx-bg i:nth-child(3){width:62vw;height:62vw;right:-22vw;top:-8vw;background:radial-gradient(circle,rgba(15,61,62,.20) 0,rgba(15,61,62,0) 66%);animation-duration:32s}
+.lx-bg::after{content:"";position:absolute;left:0;right:0;bottom:0;height:48%;background:linear-gradient(180deg,rgba(251,248,242,0),var(--c) 78%)}
+@keyframes lxDrift{to{transform:translate(4vw,3vw) scale(1.08)}}
+.lx>:not(.lx-bg):not(.lx-wm){position:relative;z-index:1}
+.lx-top{width:100%;max-width:1240px;display:flex;justify-content:flex-end;gap:8px;padding:18px 4px;flex-wrap:wrap}
+.lx-pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#2F5E5A;background:rgba(255,255,255,.72);backdrop-filter:blur(8px);border:1px solid rgba(15,61,62,.1);padding:6px 12px;border-radius:999px;text-decoration:none}
+.lx-pill svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.lx-main{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;margin-top:2vh;animation:lxIn .45s ease-out both}
+.lx-logo{display:flex;align-items:center;gap:14px;font-weight:800;font-size:42px;letter-spacing:-.035em;color:var(--t);line-height:1}
+.lx-mk{display:grid;place-items:center;width:62px;height:62px;border-radius:18px;background:var(--t);box-shadow:0 14px 28px -12px rgba(15,61,62,.6)}.lx-mk svg{width:44px;height:44px;overflow:visible}.lx-logo.sm .lx-mk{width:40px;height:40px;border-radius:12px}.lx-logo.sm .lx-mk svg{width:28px;height:28px}.lx-mk .m-ndl{transform-origin:48px 48px;animation:lxNdl 1.2s .2s cubic-bezier(.3,1.3,.4,1) both}@keyframes lxNdl{from{transform:rotate(-150deg)}to{transform:none}}
+.lx-wm{position:fixed;right:-9vw;bottom:-14vw;width:52vw;max-width:760px;opacity:.07;z-index:0;pointer-events:none}.lx-wm svg{width:100%;height:auto}.lx-wm .m-ndl{transform-origin:48px 48px;animation:lxNdl 2.4s .3s cubic-bezier(.3,1.2,.4,1) both}
+.lx-logo img{width:60px;height:60px;border-radius:17px;box-shadow:0 12px 26px -10px rgba(15,61,62,.5)}
+.lx-logo em{font-style:normal;color:var(--g)}
+.lx-logo.sm{font-size:26px;gap:10px}.lx-logo.sm img{width:38px;height:38px;border-radius:11px}
+.lx-steps{display:flex;gap:6px;margin:24px 0 0}.lx-steps span{width:20px;height:4px;border-radius:4px;background:#D3E2DF;transition:all .3s}.lx-steps span.on{width:36px;background:var(--g)}.lx-steps span.ok{background:var(--t2)}
+.lx h1{margin:22px 0 6px;font-size:31px;font-weight:800;letter-spacing:-.02em;color:var(--t2);text-align:center;line-height:1.2}
+.lx-sub{margin:0;text-align:center;color:#3F5251;font-size:15.5px;line-height:1.55}
+.lx-card{width:100%;display:flex;flex-direction:column;gap:15px;margin-top:26px}
+.lx-f{display:flex;flex-direction:column;gap:8px;font-size:14.5px;font-weight:600;color:#1F2D2D}
+.lx-f input{font:inherit;font-size:16px;font-weight:400;padding:13px 14px;border:1px solid #C3D1CF;border-radius:10px;background:rgba(255,255,255,.92);color:#0F1B33;outline:none;transition:border-color .15s,box-shadow .15s;width:100%}
+.lx-f input::placeholder{color:#9AA8A6}
+.lx-f input:focus{border-color:var(--t);box-shadow:0 0 0 4px rgba(245,183,0,.28)}
+.lx-f.bad input{border-color:#C2364B;box-shadow:0 0 0 4px rgba(194,54,75,.1)}
+.lx-msg{display:flex;gap:9px;align-items:flex-start;font-size:14.5px;line-height:1.4;color:#8F1F31;animation:lxIn .25s ease-out}
+.lx-msg::before{content:"!";width:21px;height:21px;border-radius:50%;background:#C2364B;color:#fff;font-weight:800;font-size:13px;display:grid;place-items:center;flex:none}
+.lx-msg.ok{color:#145C3A}.lx-msg.ok::before{content:"✓";background:#1F8A55}
+.lx-chk{display:flex;align-items:center;gap:12px;font-size:15.5px;font-weight:500;cursor:pointer;color:#1F2D2D;user-select:none}
+.lx-chk input{appearance:none;-webkit-appearance:none;width:23px;height:23px;border:1.5px solid #B5C6C3;border-radius:6px;background:#fff;display:grid;place-items:center;margin:0;cursor:pointer;flex:none;transition:background .15s,border-color .15s}
+.lx-chk input:checked{background:var(--t2);border-color:var(--t2)}.lx-chk input:checked::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:translate(0,-1px) rotate(45deg)}
+.lx-chk input:focus-visible{box-shadow:0 0 0 4px rgba(19,88,90,.18)}
+.lx-chk small{display:block;color:#6B7B7B;font-size:12.5px;font-weight:400}
+.lx-btn{margin-top:10px;font:inherit;font-size:16.5px;font-weight:700;color:#fff;background:var(--t2);border:0;border-radius:10px;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s,transform .1s,box-shadow .15s;box-shadow:0 10px 22px -12px rgba(15,61,62,.7)}
+.lx-btn{position:relative;overflow:hidden}.lx-btn::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--g);transition:width .35s ease}.lx-btn:hover::after,.lx-btn:focus-visible::after{width:100%}.lx-btn:disabled::after{width:100%;animation:lxRun 1.1s ease-in-out infinite}.lx-btn:hover{background:var(--t)}.lx-btn:active{transform:scale(.99)}.lx-btn:disabled{opacity:.75;cursor:wait}
+.lx-btn .sp{width:17px;height:17px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:lxSpin .7s linear infinite}
+.lx-link{color:#2E7B76;font-weight:600;font-size:15px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(46,123,118,.4);background:none;border:0;padding:0;font-family:inherit;align-self:flex-start}
+.lx-link:hover{color:var(--t)}
+.lx-who{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:22px}
+.lx-who b{font-size:17.5px;font-weight:700;color:#14202B;word-break:break-all;text-align:center}
+.lx-who .lx-link{align-self:center;text-decoration:none;font-size:15.5px}
+.lx-av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--t2),#2E8F86);flex:none;font-size:16px}
+.lx-pw{position:relative}.lx-pw input{padding-right:50px}
+.lx-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;border-radius:8px;background:transparent;cursor:pointer;color:#5F7473;display:grid;place-items:center}
+.lx-eye:hover{background:#EEF4F3;color:var(--t)}.lx-eye svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lx-caps[hidden]{display:none!important}.lx-caps{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#8A5A00;background:#FFF4D6;border-radius:8px;padding:6px 10px;margin-top:-6px}
+.lx-rec{display:flex;flex-direction:column;gap:8px}
+.lx-rec>small{font-size:12.5px;color:#6B7B7B;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.lx-acc{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:1px solid #D5E1DF;border-radius:12px;background:rgba(255,255,255,.88);cursor:pointer;font:inherit;font-size:15px;color:#14202B;text-align:left;transition:border-color .15s,box-shadow .15s,transform .1s}
+.lx-acc:hover{border-color:var(--t2);box-shadow:0 6px 16px -10px rgba(15,61,62,.5)}.lx-acc .lx-av{width:34px;height:34px;font-size:14px}
+.lx-acc span.e{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lx-acc .x{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#8A9A98;font-size:18px;line-height:1}.lx-acc .x:hover{background:#F3E4E6;color:#A12A3B}
+.lx-or{display:flex;align-items:center;gap:12px;color:#8A9A98;font-size:13px}.lx-or::before,.lx-or::after{content:"";flex:1;height:1px;background:#DCE5E3}
+.lx-ill{margin-top:26px}.lx-ill svg{width:170px;height:auto;display:block}
+.lx-otp{display:flex;gap:10px;justify-content:center;margin-top:10px}
+.lx-otp input{width:54px;height:62px;text-align:center;font:inherit;font-size:27px;font-weight:700;color:#0F1B33;border:1px solid #C9D6D4;border-radius:10px;background:#fff;outline:none;caret-color:var(--t2);transition:border-color .15s,box-shadow .15s;padding:0}
+.lx-otp input:focus{border-color:var(--t);box-shadow:0 0 0 4px rgba(245,183,0,.28)}
+.lx-otp input.f{border-color:var(--t2);background:#F4FAF8}
+.lx-otp input:nth-child(3){margin-right:12px}
+.lx-otp.bad input{border-color:#C2364B;animation:lxShake .35s}
+.lx-timer{display:flex;align-items:center;justify-content:center;gap:9px;font-size:15.5px;color:#2B3A39}
+.lx-timer svg{width:22px;height:22px;transform:rotate(-90deg)}.lx-timer circle{fill:none;stroke-width:3}.lx-timer .bg{stroke:#DCE7E5}.lx-timer .fg{stroke:var(--t2);stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.lx-back{align-self:center;margin-top:18px;text-decoration:none;font-size:16px}
+.lx-foot{margin-top:46px;text-align:center;font-size:15.5px;color:#33403F;display:flex;flex-direction:column;gap:14px}
+.lx-foot a{color:var(--t2);font-weight:700;cursor:pointer;text-decoration:none;margin-left:5px}.lx-foot a:hover{text-decoration:underline}
+.lx-hint{font-size:13.5px;color:#5A6B6A;text-align:center;margin:0;line-height:1.5}
+.lx-meter{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#5A6B6A;margin-top:-6px}.lx-meter div{flex:1;height:5px;border-radius:5px;background:#E3EBEA;overflow:hidden}.lx-meter i{display:block;height:100%;width:0;transition:width .25s,background .25s}
+.lx-qr{display:flex;gap:16px;align-items:center;background:#fff;border:1px solid #E1EAE8;border-radius:14px;padding:14px}.lx-qr img{width:148px;height:148px;flex:none;image-rendering:pixelated}
+.lx-qr ol{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6;color:#33403F}
+.lx-secret{display:block;margin-top:6px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;word-break:break-all;background:#F2F7F6;padding:6px 8px;border-radius:6px;user-select:all}
+#clOffres{width:min(1040px,100%);margin-top:40px}
+@keyframes lxIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes lxRun{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+@keyframes lxSpin{to{transform:rotate(360deg)}}
+@keyframes lxShake{20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
+@media (max-width:540px){.lx-logo{font-size:32px}.lx-mk{display:grid;place-items:center;width:62px;height:62px;border-radius:18px;background:var(--t);box-shadow:0 14px 28px -12px rgba(15,61,62,.6)}.lx-mk svg{width:44px;height:44px;overflow:visible}.lx-logo.sm .lx-mk{width:40px;height:40px;border-radius:12px}.lx-logo.sm .lx-mk svg{width:28px;height:28px}.lx-mk .m-ndl{transform-origin:48px 48px;animation:lxNdl 1.2s .2s cubic-bezier(.3,1.3,.4,1) both}@keyframes lxNdl{from{transform:rotate(-150deg)}to{transform:none}}
+.lx-wm{position:fixed;right:-9vw;bottom:-14vw;width:52vw;max-width:760px;opacity:.07;z-index:0;pointer-events:none}.lx-wm svg{width:100%;height:auto}.lx-wm .m-ndl{transform-origin:48px 48px;animation:lxNdl 2.4s .3s cubic-bezier(.3,1.2,.4,1) both}
+.lx-logo img{width:46px;height:46px}.lx h1{font-size:25px}.lx-otp{gap:6px}.lx-otp input{width:44px;height:54px;font-size:23px}.lx-otp input:nth-child(3){margin-right:6px}.lx-qr{flex-direction:column}}
+@media (prefers-reduced-motion:reduce){.lx-bg i,.lx-main,.lx-msg,.lx-mk .m-ndl,.lx-wm .m-ndl{animation:none}}`; document.head.appendChild(st); }
+
+  const LX_EYE = ['<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>', '<svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.7 0 3.2-.5 4.5-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>'];
+  const LX_LOCK = '<svg viewBox="0 0 200 170" aria-hidden="true"><g stroke="#0F3D3E" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"><rect x="58" y="22" width="78" height="134" rx="14" fill="#fff"/><rect x="58" y="22" width="78" height="134" rx="14" fill="none"/><path d="M84 34h26" /><rect x="70" y="52" width="54" height="22" rx="6" fill="#E6F2EF"/><path d="M78 63h4M88 63h4M98 63h4M108 63h4" stroke-width="4"/></g><g transform="translate(92 92)"><path d="M28 0l26 10v20c0 18-12 30-26 36C14 60 2 48 2 30V10z" fill="#F5B700" stroke="#0F3D3E" stroke-width="5" stroke-linejoin="round"/><path d="M16 32l9 9 17-19" fill="none" stroke="#0F3D3E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g><g stroke="#13585A" stroke-width="6" stroke-linecap="round"><path d="M156 30v-14M168 44l10-10M172 62h14"/></g></svg>';
+  function lxPwScore(p) { let s = 0; if (!p) return 0; if (p.length >= 8) s++; if (p.length >= 12) s++; if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; return Math.min(4, s); }
+
+  function screen(mode, msg, ok) { const app = document.getElementById("app"); if (!app) return; lxCss();
+    if (LX.tm) { clearInterval(LX.tm); LX.tm = null; }
+    if (screen._email && !LX.email) LX.email = screen._email;
+    if (!LX.email && Auth.s && Auth.s.user && Auth.s.user.email) LX.email = Auth.s.user.email;
+    if (mode === "pass" && !LX.email) mode = "login";
+    const em = LX.email, ini = (em || "?").charAt(0).toUpperCase();
+    const flow = ["login", "pass"].concat(mode === "mfa" || mode === "enroll" ? [mode] : []);
+    const si = flow.indexOf(mode);
+    const steps = si >= 0 ? `<div class="lx-steps" aria-hidden="true">${flow.map((k, i) => `<span class="${i === si ? "on" : i < si ? "ok" : ""}"></span>`).join("")}</div>` : "";
+    const M = msg ? `<div class="lx-msg ${ok ? "ok" : ""}" role="alert">${msg}</div>` : "";
+    const keepChk = `<label class="lx-chk"><input type="checkbox" id="lxKeep" ${LX.keep ? "checked" : ""}><span>Maintenir ma connexion active pendant 30 jours</span></label>`;
+    const big = mode === "login" || mode === "pass";
+    let body = "", foot = "";
+    if (mode === "login") {
+      const R = lxRec();
+      body = `<h1>Connectez-vous</h1><p class="lx-sub">Votre espace comptable, en toute sécurité.</p><form class="lx-card" id="clForm" novalidate>
+        ${R.length ? `<div class="lx-rec"><small>Continuer avec</small>${R.map(r => `<button type="button" class="lx-acc" data-acc="${lxE(r)}"><span class="lx-av">${lxE(r.charAt(0).toUpperCase())}</span><span class="e">${lxE(r)}</span><span class="x" data-accx="${lxE(r)}" title="Retirer ce compte de cet appareil" role="button" aria-label="Retirer">×</span></button>`).join("")}</div><div class="lx-or">ou avec une autre adresse</div>` : ""}
+        <label class="lx-f ${msg && !ok ? "bad" : ""}"><span>E-mail</span><input id="clEmail" type="email" autocomplete="username" inputmode="email" placeholder="nom@societe.fr" value="${lxE(em)}"></label>${M}
+        ${keepChk}<button class="lx-btn" type="submit">Continuer</button></form>`;
+      foot = `<div>Première connexion avec votre code ?<a data-go="signup">Créer mon mot de passe</a></div>`;
+    } else if (mode === "pass") {
+      body = `<h1>Connectez-vous</h1><div class="lx-who"><span class="lx-av">${lxE(ini)}</span><b>${lxE(em)}</b><button type="button" class="lx-link" data-go="login">Changer de compte</button></div><form class="lx-card" id="clForm" novalidate>
+        <input type="email" autocomplete="username" value="${lxE(em)}" style="display:none" aria-hidden="true" tabindex="-1">
+        <label class="lx-f ${msg && !ok ? "bad" : ""}"><span>Mot de passe ou code d'accès</span><div class="lx-pw"><input id="clPass" type="password" autocomplete="current-password" placeholder="Entrez votre mot de passe"><button type="button" class="lx-eye" data-eye title="Afficher ou masquer" aria-label="Afficher le mot de passe">${LX_EYE[0]}</button></div></label>
+        <div class="lx-caps" id="lxCaps" hidden>⇪ Majuscules activées</div>
+        <button type="button" class="lx-link" data-go="recover">Mot de passe oublié ?</button>${M}
+        <label class="lx-chk"><input type="checkbox" id="lxShow"><span>Afficher le mot de passe</span></label>${keepChk}
+        <button class="lx-btn" type="submit">Continuer</button><p class="lx-hint">Client : saisissez le <b>code d'accès</b> reçu de votre cabinet (SC-…).</p></form>`;
+    } else if (mode === "mfa") {
+      body = `<div class="lx-ill">${LX_LOCK}</div><h1>Entrez votre code de vérification</h1><p class="lx-sub">Ouvrez votre application d'authentification (Google Authenticator, Microsoft Authenticator, 1Password…) et saisissez le code à 6 chiffres de <b>${lxE(em)}</b>.</p>
+        <form class="lx-card" id="clForm" novalidate><div class="lx-otp ${msg && !ok ? "bad" : ""}" id="lxOtp">${[0, 1, 2, 3, 4, 5].map(i => `<input inputmode="numeric" pattern="[0-9]*" maxlength="6" aria-label="Chiffre ${i + 1}" ${i === 0 ? 'autocomplete="one-time-code"' : 'autocomplete="off"'}>`).join("")}</div>${M}
+        <div class="lx-timer"><svg viewBox="0 0 24 24"><circle class="bg" cx="12" cy="12" r="9"/><circle class="fg" id="lxRing" cx="12" cy="12" r="9" stroke-dasharray="56.5" stroke-dashoffset="0"/></svg><span>Nouveau code dans <b id="lxT">30</b> s</span></div>
+        <label class="lx-chk" style="justify-content:center"><input type="checkbox" id="lxTrust"><span>Ne plus demander sur cet appareil pendant 30 jours</span></label>
+        <button class="lx-btn" type="submit">Vérifier</button><button type="button" class="lx-link lx-back" data-go="out">Retourner</button></form>`;
+    } else if (mode === "enroll") {
+      const E = LX.enroll;
+      body = `<div class="lx-ill">${LX_LOCK}</div><h1>Activez la double authentification</h1><p class="lx-sub">Votre cabinet protège l'accès par un code temporaire en plus du mot de passe. Une minute suffit.</p>
+        <form class="lx-card" id="clForm" novalidate>${E ? `<div class="lx-qr"><img src="${lxE(E.qr)}" alt="QR code à scanner"><ol><li>Installez une application d'authentification (Google ou Microsoft Authenticator…)</li><li>Scannez ce QR code, ou saisissez la clé :<span class="lx-secret">${lxE(E.secret)}</span></li><li>Tapez le code à 6 chiffres affiché</li></ol></div>` : `<div class="lx-hint">Préparation du QR code…</div>`}
+        <div class="lx-otp ${msg && !ok ? "bad" : ""}" id="lxOtp">${[0, 1, 2, 3, 4, 5].map(i => `<input inputmode="numeric" pattern="[0-9]*" maxlength="6" aria-label="Chiffre ${i + 1}" autocomplete="off">`).join("")}</div>${M}
+        <button class="lx-btn" type="submit" ${E ? "" : "disabled"}>Activer et continuer</button><button type="button" class="lx-link lx-back" data-go="out">Retourner</button></form>`;
+    } else {
+      const T = { signup: ["Première connexion", "Créer mon mot de passe", "Utilisez l'adresse e-mail à laquelle votre cabinet vous a invité, puis choisissez votre mot de passe."], recover: ["Mot de passe oublié", "Recevoir le lien", "Indiquez votre adresse e-mail : vous recevrez un lien pour choisir un nouveau mot de passe."], reset: ["Nouveau mot de passe", "Enregistrer", "Choisissez un mot de passe d'au moins 8 caractères."] }[mode] || ["Connexion", "Continuer", ""];
+      const pw2 = mode === "signup" || mode === "reset";
+      body = `<h1>${T[0]}</h1><p class="lx-sub">${T[2]}</p><form class="lx-card" id="clForm" novalidate>
+        ${mode !== "reset" ? `<label class="lx-f"><span>E-mail</span><input id="clEmail" type="email" autocomplete="username" inputmode="email" placeholder="nom@societe.fr" value="${lxE(em)}"></label>` : ""}
+        ${pw2 ? `<label class="lx-f"><span>Mot de passe</span><div class="lx-pw"><input id="clPass" type="password" autocomplete="new-password" minlength="8" placeholder="8 caractères minimum"><button type="button" class="lx-eye" data-eye title="Afficher ou masquer" aria-label="Afficher le mot de passe">${LX_EYE[0]}</button></div></label>
+        <div class="lx-meter"><div><i id="lxMeter"></i></div><span id="lxMeterT">Robustesse</span></div>
+        <label class="lx-f"><span>Confirmer le mot de passe</span><input id="clPass2" type="password" autocomplete="new-password" minlength="8"></label>` : ""}${M}
+        <button class="lx-btn" type="submit">${T[1]}</button>${mode !== "reset" ? `<button type="button" class="lx-link lx-back" data-go="login">← Retour à la connexion</button>` : ""}</form>`;
+    }
+    const help = (OFF && (OFF.email || OFF.tel)) ? `<a class="lx-pill" href="${OFF.email ? "mailto:" + lxE(OFF.email) : "tel:" + lxE(OFF.tel)}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14M12 17h.01"/></svg>Besoin d'aide ?</a>` : "";
+    app.innerHTML = `<div class="lx" data-step="${mode}" style="${lxCol()}"><div class="lx-bg" aria-hidden="true"><i></i><i></i><i></i></div><div class="lx-wm" aria-hidden="true">${window.SCLOGO ? SCLOGO.markSVG("#0F3D3E", "#F5B700") : ""}</div>
+      <header class="lx-top"><span class="lx-pill"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Connexion chiffrée</span>${help}</header>
+      <main class="lx-main"><div class="lx-logo ${big ? "" : "sm"}">${lxMark()}<span>${lxBrand()}</span></div>${steps}${body}${foot ? `<div class="lx-foot">${foot}</div>` : ""}</main>
+      ${mode === "login" ? '<div id="clOffres"></div>' : ""}</div>`;
     if (mode === "login") offres();
-    app.querySelectorAll("[data-eye]").forEach(b => b.addEventListener("click", () => { const i = document.getElementById(b.dataset.eye); if (i) { i.type = i.type === "password" ? "text" : "password"; b.classList.toggle("on", i.type === "text"); } }));
-    app.querySelectorAll("[data-cl]").forEach(a => a.addEventListener("click", () => { const e = document.getElementById("clEmail"); if (e) screen._email = e.value; screen(a.dataset.cl); }));
-    const f = document.getElementById("clForm"); const first = f.querySelector("input"); if (first && !first.value) setTimeout(() => first.focus(), 50);
-    f.addEventListener("submit", async ev => { ev.preventDefault(); const btn = f.querySelector(".cl-btn"); const em = (document.getElementById("clEmail") || {}).value; const pw = (document.getElementById("clPass") || {}).value; const pw2 = (document.getElementById("clPass2") || {}).value;
-      if (em !== undefined) screen._email = em.trim();
+    lxWire(app, mode);
+  }
+
+  function lxWire(app, mode) {
+    const f = document.getElementById("clForm"); if (!f) return;
+    const go = m => { const e = document.getElementById("clEmail"); if (e) { LX.email = e.value.trim(); screen._email = LX.email; } screen(m); };
+    app.querySelectorAll("[data-go]").forEach(a => a.addEventListener("click", async () => { const g = a.dataset.go; if (g === "out") { await Auth.logout(); LX.factor = null; LX.enroll = null; return screen("login"); } go(g); }));
+    app.querySelectorAll("[data-acc]").forEach(b => b.addEventListener("click", ev => { const x = ev.target.closest("[data-accx]"); if (x) { ev.stopPropagation(); lxRecDel(x.dataset.accx); return screen("login"); } LX.email = b.dataset.acc; screen._email = LX.email; screen("pass"); }));
+    const kp = document.getElementById("lxKeep"); if (kp) kp.addEventListener("change", () => { LX.keep = kp.checked; try { localStorage.setItem("sc:keep30", kp.checked ? "1" : "0"); } catch (e) { } });
+    const pw = document.getElementById("clPass");
+    const eye = app.querySelector("[data-eye]"), show = document.getElementById("lxShow");
+    const setShow = on => { if (!pw) return; pw.type = on ? "text" : "password"; if (eye) eye.innerHTML = LX_EYE[on ? 1 : 0]; if (show) show.checked = on; };
+    if (eye) eye.addEventListener("click", () => setShow(pw.type === "password"));
+    if (show) show.addEventListener("change", () => setShow(show.checked));
+    const caps = document.getElementById("lxCaps"); if (pw && caps) ["keydown", "keyup"].forEach(t => pw.addEventListener(t, e => { if (e.getModifierState) caps.hidden = !e.getModifierState("CapsLock"); }));
+    const mt = document.getElementById("lxMeter"); if (mt && pw) pw.addEventListener("input", () => { const s = lxPwScore(pw.value); const C = ["#C2364B", "#E0732B", "#E0A800", "#4FA36B", "#1F8A55"], L = ["Trop faible", "Faible", "Moyen", "Bon", "Excellent"]; mt.style.width = (pw.value ? 20 + s * 20 : 0) + "%"; mt.style.background = C[s]; document.getElementById("lxMeterT").textContent = pw.value ? L[s] : "Robustesse"; });
+    /* cases du code : saisie, collage, retour arrière, envoi automatique */
+    const otp = document.getElementById("lxOtp");
+    if (otp) { const I = [...otp.querySelectorAll("input")];
+      const val = () => I.map(i => i.value).join("");
+      const fill = (start, digits) => { let k = start; for (const d of digits) { if (k >= I.length) break; I[k].value = d; I[k].classList.add("f"); k++; } (I[Math.min(k, I.length - 1)]).focus(); if (val().length === 6) setTimeout(() => f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event("submit", { cancelable: true })), 120); };
+      I.forEach((inp, i) => {
+        inp.addEventListener("input", () => { const d = inp.value.replace(/\D/g, ""); inp.value = ""; inp.classList.remove("f"); if (d) fill(i, d); });
+        inp.addEventListener("keydown", e => { if (e.key === "Backspace" && !inp.value && i > 0) { I[i - 1].value = ""; I[i - 1].classList.remove("f"); I[i - 1].focus(); e.preventDefault(); } else if (e.key === "ArrowLeft" && i > 0) I[i - 1].focus(); else if (e.key === "ArrowRight" && i < 5) I[i + 1].focus(); });
+        inp.addEventListener("paste", e => { const d = ((e.clipboardData || window.clipboardData).getData("text") || "").replace(/\D/g, ""); if (d) { e.preventDefault(); fill(i, d); } });
+        inp.addEventListener("focus", () => inp.select()); });
+      setTimeout(() => I[0].focus(), 60);
+      const ring = document.getElementById("lxRing"), tt = document.getElementById("lxT");
+      if (ring && tt) { const tick = () => { if (!document.body.contains(tt)) { clearInterval(LX.tm); LX.tm = null; return; } const r = 30 - Math.floor(Date.now() / 1000) % 30; tt.textContent = r; ring.style.strokeDashoffset = (56.5 * (1 - r / 30)).toFixed(1); }; tick(); LX.tm = setInterval(tick, 1000); }
+      f._otp = val; }
+    else { const first = f.querySelector("input:not([style*='display:none'])"); if (first) setTimeout(() => first.focus(), 60); }
+    if (mode === "enroll" && !LX.enroll) lxEnrollStart();
+    f.addEventListener("submit", ev => { ev.preventDefault(); lxSubmit(mode, f); });
+  }
+
+  async function lxEnrollStart() { try { const t = await Auth.token(); const j = await Auth.call("factors", { factor_type: "totp", friendly_name: "Speedix " + new Date().toISOString().slice(0, 16) }, "POST", t); LX.enroll = { id: j.id, qr: (j.totp && j.totp.qr_code) || "", secret: (j.totp && j.totp.secret) || "" }; screen("enroll"); } catch (e) { screen("enroll", "Activation impossible pour le moment : " + errFr(e)); } }
+  async function lxVerify(factorId, code) { const t = await Auth.token(); const ch = await Auth.call("factors/" + factorId + "/challenge", {}, "POST", t); const j = await Auth.call("factors/" + factorId + "/verify", { challenge_id: ch.id, code }, "POST", t); Auth.keep(j); lxMeta(); return j; }
+  window.SC_MFA_VERIFY = lxVerify;
+
+  async function lxSubmit(mode, f) {
+    const btn = f.querySelector(".lx-btn"); const busy = t => { if (btn) { btn.disabled = true; btn.innerHTML = `<span class="sp"></span>${t || "Patientez…"}`; } };
+    const emI = document.getElementById("clEmail"), pw = (document.getElementById("clPass") || {}).value || "", pw2 = (document.getElementById("clPass2") || {}).value || "";
+    if (emI) { LX.email = emI.value.trim(); screen._email = LX.email; }
+    const em = LX.email; const emOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
+    try {
+      if (mode === "login") { if (!em) return screen("login", "Ce champ est obligatoire"); if (!emOk) return screen("login", "Adresse e-mail invalide"); return screen("pass"); }
+      if (mode === "pass") { if (!pw) return screen("pass", "Ce champ est obligatoire"); busy("Connexion…");
+        const isCode = /^\s*sc-/i.test(pw); const p2 = isCode ? pw.trim().toUpperCase().replace(/\s+/g, "") : pw;
+        try { await Auth.login(em, p2); }
+        catch (e) { if (!isCode || !/Invalid login credentials/i.test(e.message || "")) throw e;
+          let s = null; try { s = await Auth.signup(em, p2); } catch (e2) { if (/already registered|already been registered|User already exists/i.test(e2.message || "")) throw new Error("SC_EXISTS"); throw e2; }
+          if (!s) { try { await Auth.login(em, p2); } catch (e3) { if (/Email not confirmed/i.test(e3.message || "")) throw e3; throw new Error("SC_EXISTS"); } } }
+        lxRecAdd(em); lxMeta(); return lxAfter(); }
+      if (mode === "mfa" || mode === "enroll") { const code = f._otp ? f._otp() : ""; if (code.length !== 6) return screen(mode, "Saisissez les 6 chiffres du code.");
+        busy("Vérification…");
+        if (mode === "mfa") { if (!LX.factor) { const F = await lxFactors(); LX.factor = F[0] && F[0].id; } if (!LX.factor) return lxAfter(); await lxVerify(LX.factor, code);
+          if ((document.getElementById("lxTrust") || {}).checked) { try { localStorage.setItem(lxTrustK(), String(Date.now() + 30 * 864e5)); } catch (e) { } } }
+        else { if (!LX.enroll) return lxEnrollStart(); await lxVerify(LX.enroll.id, code); LX.enroll = null; }
+        delete Auth.s.mfa; Auth.save(Auth.s); return screen._done(); }
       if ((mode === "signup" || mode === "reset") && pw !== pw2) return screen(mode, "Les deux mots de passe ne sont pas identiques.");
-      if (mode !== "recover" && mode !== "reset" && (!em || !pw)) return screen(mode, "Renseignez votre e-mail et votre mot de passe.");
-      btn.disabled = true; btn.textContent = "Patientez…";
-      try {
-        if (mode === "login") { const isCode = /^\s*sc-/i.test(pw); const p2 = isCode ? pw.trim().toUpperCase().replace(/\s+/g, "") : pw;
-          try { await Auth.login(em.trim(), p2); }
-          catch (e) { if (!isCode || !/Invalid login credentials/i.test(e.message || "")) throw e;
-            /* première connexion d'un client : son compte est créé avec son code (vérifié par la base) */
-            let s = null; try { s = await Auth.signup(em.trim(), p2); } catch (e2) { if (/already registered|already been registered|User already exists/i.test(e2.message || "")) throw new Error("SC_EXISTS"); throw e2; }
-            if (!s) { try { await Auth.login(em.trim(), p2); } catch (e3) { if (/Email not confirmed/i.test(e3.message || "")) throw e3; throw new Error("SC_EXISTS"); } } }
-          screen._done(); }
-        else if (mode === "signup") { const s = await Auth.signup(em.trim(), pw); if (s) screen._done(); else screen("login", "Compte créé. Ouvrez l'e-mail de confirmation reçu, puis connectez-vous ici.", true); }
-        else if (mode === "recover") { await Auth.recover(em.trim()); screen("login", "Si un compte existe pour cette adresse, un lien vient de vous être envoyé par e-mail.", true); }
-        else if (mode === "reset") { await Auth.setPassword(screen._rat, pw); history.replaceState(null, "", location.pathname); screen("login", "Mot de passe modifié : connectez-vous.", true); }
-      } catch (e) { screen(mode, errFr(e)); }
-    }); }
+      if ((mode === "signup" || mode === "reset") && pw.length < 8) return screen(mode, "Mot de passe trop court : 8 caractères minimum.");
+      if (mode !== "reset" && !emOk) return screen(mode, em ? "Adresse e-mail invalide" : "Ce champ est obligatoire");
+      busy();
+      if (mode === "signup") { const s = await Auth.signup(em, pw); if (s) { lxRecAdd(em); lxMeta(); return lxAfter(); } return screen("login", "Compte créé. Ouvrez l'e-mail de confirmation reçu, puis connectez-vous ici.", true); }
+      if (mode === "recover") { await Auth.recover(em); return screen("login", "Si un compte existe pour cette adresse, un lien vient de vous être envoyé par e-mail.", true); }
+      if (mode === "reset") { await Auth.setPassword(screen._rat, pw); history.replaceState(null, "", location.pathname); return screen("login", "Mot de passe modifié : connectez-vous.", true); }
+    } catch (e) { const m = errFr(e); screen(mode, /invalid.*(code|totp)|Invalid TOTP|expired/i.test(String(e && e.message)) ? "Code incorrect ou expiré : réessayez avec le code affiché." : m); }
+  }
 
   /* offres et tarifs, affichés sous la connexion (vitrine publique publiée par l'éditeur) */
   let OFF = null;
@@ -172,9 +371,10 @@
   Store.gate = async function () {
     const hs = hashSession();
     let u = hs === "reset" ? null : await me();
-    if (!u) { let om = ""; try { om = sessionStorage.getItem("sc:outMsg") || ""; sessionStorage.removeItem("sc:outMsg"); } catch (e) { }
+    const pend = u && Auth.s && Auth.s.mfa ? Auth.s.mfa : "";
+    if (!u || pend) { let om = ""; try { om = sessionStorage.getItem("sc:outMsg") || ""; sessionStorage.removeItem("sc:outMsg"); } catch (e) { }
       if (hs !== "reset") { const sp = document.getElementById("scSplash"); if (sp) sp.remove(); if (!om) await intro(); }
-      await new Promise(res => { screen._done = res; screen(hs === "reset" ? "reset" : "login", om || undefined, !!om); }); u = await me(); }
+      await new Promise(res => { screen._done = res; screen(hs === "reset" ? "reset" : pend ? (pend === "enroll" ? "enroll" : "mfa") : "login", om || undefined, !!om); }); u = await me(); }
     if (!u) { screen("login", "Connexion impossible, réessayez."); return new Promise(() => { }); }
     Store.db = DB; Store.uid = u.id; Store.mode = "db"; Store.cloud = true;
     let ed = null;
@@ -186,5 +386,46 @@
   /* compte sans invitation valide : en attente plutôt qu'accès libre */
   const _la = loadAccess;
   loadAccess = async function () { await _la.apply(this, arguments); if (!isAdmin() && UI.access && UI.access.auto) UI.access = { role: "client", statut: "attente", offres: [] }; };
+
+  /* ---------------- Paramètres › Sécurité de connexion (double authentification, durée de session) ---------------- */
+  function secCard() { const adm = typeof isAdmin === "function" && isAdmin(); const keep = LX.keep;
+    return `<section class="panel" style="margin-bottom:14px" id="secCard"><div class="panel-h"><h2>🔐 Sécurité de connexion</h2></div><div class="panel-b">
+      <div class="grid g2">
+        <div><b>Double authentification</b><p class="small muted" style="margin:4px 0 8px">Un code à 6 chiffres d'une application d'authentification (Google ou Microsoft Authenticator, 1Password…) est demandé après le mot de passe.</p><div id="secMfa" class="small muted">Vérification…</div></div>
+        <div><label class="f">Maintenir la connexion active pendant 30 jours<select class="in" id="secKeep"><option value="1" ${keep ? "selected" : ""}>Oui</option><option value="0" ${keep ? "" : "selected"}>Non (déconnexion après 12 h sans activité)</option></select></label>
+        <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap"><button class="btn sm" data-sec="trust">Oublier cet appareil de confiance</button><button class="btn sm" data-sec="out">Se déconnecter</button></div></div>
+      </div>
+      ${adm ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--rule,#E3EBEA)"><label class="f" style="max-width:520px">Exiger la double authentification pour tous les utilisateurs (éditeur)<select class="in" id="secPol"><option value="0">Non</option><option value="1">Oui : activation obligatoire à la prochaine connexion</option></select></label><div id="secPolInfo" class="small muted" style="margin-top:4px"></div></div>` : ""}
+    </div></section>`; }
+  async function secFill() { const box = document.getElementById("secMfa"); if (!box) return;
+    const F = await lxFactors(); const at = (() => { try { return JSON.parse(atob(Auth.s.at.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); } catch (e) { return {}; } })();
+    box.innerHTML = F.length ? `<span class="pill ok" style="background:#E3F4EA;color:#1F6B44;padding:3px 10px;border-radius:999px;font-weight:700">✓ Activée</span> <span>depuis le ${new Date(F[0].created_at || Date.now()).toLocaleDateString("fr-FR")}${at.aal === "aal2" ? " · session vérifiée" : ""}</span><div style="margin-top:8px"><button class="btn sm danger" data-sec="off" data-id="${F[0].id}">Désactiver…</button></div>`
+      : `<span class="pill" style="background:#FFF4D6;color:#8A5A00;padding:3px 10px;border-radius:999px;font-weight:700">Désactivée</span><div style="margin-top:8px"><button class="btn sm pri" data-sec="on">Activer la double authentification</button></div>`;
+    const ps = document.getElementById("secPol"); if (ps) { const pol = await lxPolicy(); ps.value = pol.mfa === "1" ? "1" : "0"; const inf = document.getElementById("secPolInfo"); if (inf && pol.at) inf.textContent = "Dernière modification : " + new Date(pol.at).toLocaleString("fr-FR") + (pol.by ? " par " + pol.by : ""); } }
+  function secModal(kind, factorId) { lxCss(); const old = document.getElementById("secMod"); if (old) old.remove();
+    const d = document.createElement("div"); d.id = "secMod"; d.style.cssText = "position:fixed;inset:0;z-index:60;background:rgba(15,27,51,.45);display:grid;place-items:center;padding:16px";
+    d.innerHTML = `<div class="lx" style="min-height:auto;padding:0;width:min(480px,100%)"><div style="background:#fff;border-radius:18px;padding:24px;box-shadow:0 30px 80px rgba(15,27,51,.3);width:100%"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px;color:#13585A">${kind === "on" ? "Activer la double authentification" : "Désactiver la double authentification"}</b><button class="lx-eye" style="position:static;transform:none" data-x>✕</button></div>
+      <div id="secBody" style="margin-top:14px">${kind === "on" ? '<div class="lx-hint">Préparation du QR code…</div>' : '<p class="lx-hint" style="text-align:left">Pour confirmer, saisissez le code actuel de votre application d\'authentification.</p>'}</div>
+      <form id="secF" class="lx-card" style="margin-top:12px" novalidate><div class="lx-f"><input id="secCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="Code à 6 chiffres" style="text-align:center;font-size:22px;letter-spacing:.3em"></div><div id="secMsg"></div><button class="lx-btn" type="submit" style="margin-top:0">${kind === "on" ? "Activer" : "Désactiver"}</button></form></div></div>`;
+    document.body.appendChild(d); const close = () => d.remove(); d.querySelector("[data-x]").onclick = close; d.addEventListener("click", e => { if (e.target === d) close(); });
+    const msg = (t, ok) => { document.getElementById("secMsg").innerHTML = t ? `<div class="lx-msg ${ok ? "ok" : ""}">${t}</div>` : ""; };
+    let enr = null;
+    if (kind === "on") (async () => { try { const t = await Auth.token(); const j = await Auth.call("factors", { factor_type: "totp", friendly_name: "Speedix " + new Date().toISOString().slice(0, 16) }, "POST", t); enr = j;
+      document.getElementById("secBody").innerHTML = `<div class="lx-qr"><img src="${lxE(j.totp.qr_code)}" alt="QR code"><ol><li>Ouvrez votre application d'authentification</li><li>Scannez le QR code ou saisissez la clé :<span class="lx-secret">${lxE(j.totp.secret)}</span></li><li>Tapez le code affiché</li></ol></div>`; } catch (e) { msg("Activation impossible : " + errFr(e)); } })();
+    setTimeout(() => { const c = document.getElementById("secCode"); if (c) c.focus(); }, 50);
+    document.getElementById("secF").addEventListener("submit", async ev => { ev.preventDefault(); const code = (document.getElementById("secCode").value || "").replace(/\D/g, ""); if (code.length !== 6) return msg("Saisissez les 6 chiffres du code.");
+      try { if (kind === "on") { if (!enr) return msg("QR code en préparation, patientez."); await lxVerify(enr.id, code); toast("Double authentification activée"); }
+        else { await lxVerify(factorId, code); const t = await Auth.token(); await Auth.call("factors/" + factorId, null, "DELETE", t); toast("Double authentification désactivée"); }
+        close(); secFill(); } catch (e) { msg(/totp|code|expired|invalid/i.test(String(e && e.message)) ? "Code incorrect ou expiré." : errFr(e)); } }); }
+  document.addEventListener("click", async e => { const b = e.target.closest && e.target.closest("[data-sec]"); if (!b) return; const k = b.dataset.sec;
+    if (k === "on" || k === "off") secModal(k, b.dataset.id);
+    else if (k === "trust") { try { localStorage.removeItem(lxTrustK()); } catch (x) { } toast("Cet appareil n'est plus de confiance : le code sera demandé à la prochaine connexion"); }
+    else if (k === "out") { if (window.SC_LOGOUT) SC_LOGOUT(); } });
+  document.addEventListener("change", async e => { const t = e.target;
+    if (t.id === "secKeep") { LX.keep = t.value === "1"; try { localStorage.setItem("sc:keep30", t.value); } catch (x) { } lxMeta(); toast("Durée de connexion enregistrée"); }
+    else if (t.id === "secPol") { try { const raw = Store.rawDb || Store.db; await raw.doc("public/securite").set({ mfa: t.value, at: Date.now(), by: UI.userEmail || "" }); LX.pol = null; toast(t.value === "1" ? "Double authentification obligatoire pour tous les utilisateurs" : "Double authentification facultative"); secFill(); } catch (x) { toast("Enregistrement impossible : " + (x.message || x)); } } });
+  document.addEventListener("DOMContentLoaded", () => { if (typeof VIEWS === "undefined" || typeof VIEWS.params !== "function") return; const _p = VIEWS.params;
+    VIEWS.params = function () { const h = _p.apply(this, arguments); setTimeout(secFill, 30); const i = h.indexOf('<div class="grid g2">'); return i < 0 ? h + secCard() : h.slice(0, i) + secCard() + h.slice(i); }; });
+  window.SC_LX_PREVIEW = () => { lxCss(); return `<div class="lx" style="${lxCol()};min-height:auto;padding:0 16px 34px;margin:14px auto 18px;max-width:900px;border-radius:22px;overflow:hidden;border:1px solid #E3EBEA"><div class="lx-bg" aria-hidden="true" style="position:absolute"><i></i><i></i><i></i></div><header class="lx-top"><span class="lx-pill">🔒 Connexion chiffrée</span></header><main class="lx-main" style="margin-top:0"><div class="lx-logo">${lxMark()}<span>${lxBrand()}</span></div><div class="lx-steps"><span class="on"></span><span></span></div><h1>Connectez-vous</h1><p class="lx-sub">Votre espace comptable, en toute sécurité.</p><div class="lx-card"><label class="lx-f"><span>E-mail</span><input disabled placeholder="email-du-client@exemple.fr"></label><label class="lx-chk"><input type="checkbox" disabled><span>Maintenir ma connexion active pendant 30 jours</span></label><button class="lx-btn" type="button" disabled>Continuer</button></div><p class="lx-hint" style="margin-top:14px">Étape suivante : le <b>code d'accès</b> reçu de votre cabinet (SC-…), puis le code de vérification si la double authentification est activée.</p></main></div>`; };
   window.SC_LOGOUT = async () => { try { if (Store.flush) await Store.flush(); } catch (e) { } await Auth.logout(); try { ["sc:view", "sc:index"].forEach(k => localStorage.removeItem(k)); } catch (e) { } location.reload(); };
 })();
