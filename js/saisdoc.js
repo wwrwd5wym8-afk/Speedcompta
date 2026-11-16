@@ -206,11 +206,11 @@ function sdClientName(text) { const L = String(text || "").split(/\n/).map(x => 
 async function sdAddFiles(kind, files) {
   if (!ensureX()) { toast("Chargement en cours, réessayez dans un instant."); return; }
   if (kind === "O") return sdAddOther(files);
-  const cfg = inboxCfg(); const sv = { autoTiers: cfg.autoTiers, auto: cfg.auto }; let n = 0; const errs = []; const added = [];
+  const cfg = inboxCfg(); const sv = { autoTiers: cfg.autoTiers, auto: cfg.auto }; let n = 0; const errs = []; const added = []; UI._sdAdding = true;
   for (let i = 0; i < files.length; i++) { const f = files[i]; UI.sdBusy = `Lecture ${i + 1}/${files.length} · ${f.name}`; render();
     try { cfg.autoTiers = false; cfg.auto = false; const before = XS.inbox.length; const tb = new Set(S.tiers); await inboxAddFile(f.name, new Uint8Array(await f.arrayBuffer())); const nt = S.tiers.filter(t => !tb.has(t)); if (nt.length) { S.tiers = S.tiers.filter(t => tb.has(t)); XS.inbox.slice(before).forEach(it => { if (nt.some(t => t.code === it.tiers)) it.tiers = ""; }); } XS.inbox.slice(before).forEach(it => { sdFix(it, kind); added.push(it); }); n += XS.inbox.length - before; }
     catch (e) { console.error(e); errs.push(f.name + " : " + (e.message || e)); } finally { Object.assign(cfg, sv); } }
-  UI.sdBusy = ""; let auto = 0;
+  UI.sdBusy = ""; UI._sdAdding = false; let auto = 0;
   if (sdCfg().auto === "1") added.forEach(it => { if (it.statut === "a_traiter" && !inboxCheck(it).length && !sdChecks(it).W.length && inboxPost(it, true)) auto++; });
   const ready = added.filter(it => it.statut === "a_traiter" && !inboxCheck(it).length).length;
   render(); toast(`${n} ${kind === "V" ? "facture(s) client" : "facture(s) fournisseur"} pré-comptabilisée(s) · ${ready} prête(s)${auto ? " · " + auto + " comptabilisée(s) automatiquement" : ""}${n - ready - auto > 0 ? " · " + (n - ready - auto) + " à vérifier" : ""}${errs.length ? " · " + errs.length + " illisible(s) : " + errs[0] : ""}.`);
@@ -632,11 +632,6 @@ Object.assign(ACT, {
     h = h.replace(/<a class="pz-qi ([^"]*)" data-act="pzPick" data-id="([^"]+)">/g, (m, c, id) => { const it = sdIt(id); const ok = it && it.statut === "a_traiter"; return m + (ok ? `<input type="checkbox" class="pz-ck" data-act="pzCk" data-id="${id}" ${sel.has(id) ? "checked" : ""} title="Sélectionner pour comptabiliser en lot">` : `<span class="pz-ck0"></span>`); });
     const bar = sel.size ? `<div class="pz-lot"><b>${sel.size} sélectionnée(s)</b><button class="btn sm pri" data-act="pzCkPost">✓ Valider et comptabiliser</button><button class="lnk small" data-act="pzCkNone">Annuler</button></div>` : `<div class="pz-lot0"><button class="lnk small" data-act="pzCkAll">☑ Tout sélectionner pour comptabiliser en lot</button></div>`;
     return h.replace('<div class="pz-ql">', bar + '<div class="pz-ql">'); };
-  /* Comptabilité › Vue d'ensemble : la saisie y figure aussi */
-  try { const T = SPACES.jrn.tabs; if (!T.some(t => t[0] === "pieces")) T.splice(2, 0, ["pieces", "Saisie des pièces", () => { if (!PZ().tab) PZ().tab = "pieces"; }, () => UI.view === "pieces"]); } catch (e) { }
-  const _c = VIEWS.compta; if (typeof _c === "function") VIEWS.compta = function () { const h = _c.apply(this, arguments); if (!S || !ensureX()) return h; const A = XS.inbox.filter(x => /a_traiter|doublon/.test(x.statut)); const ready = A.filter(x => x.statut === "a_traiter" && !inboxCheck(x).length); const mt = A.reduce((a, x) => a + inboxTotals(x).ttc, 0); const done = XS.inbox.filter(x => x.statut === "comptabilisee" && (x.postedAt || "").slice(0, 7) === todayISO().slice(0, 7)).length;
-    const card = `<section class="sd-sum"><div class="sd-sum-h"><b>✍ Saisie des pièces</b><span class="sp"></span><button class="btn sm" data-act="sdMode2" data-v="pieces">Pièces à traiter</button><button class="btn sm" data-act="sdMode2" data-v="masse">⚡ Saisie en masse</button></div><div class="sd-sum-k">${[["À traiter", A.length, A.length ? "ko" : "ok"], ["Prêtes à comptabiliser", ready.length, ""], ["Montant en attente", eur0(mt), ""], ["Comptabilisées ce mois", done, "ok"]].map(([l, v, c]) => `<div><span>${l}</span><b class="mono ${c}">${v}</b></div>`).join("")}</div></section>`;
-    const i = h.indexOf('<div class="grid'); return i < 0 ? h + card : h.slice(0, i) + card + h.slice(i); };
   ACT.sdMode2 = el => { PZ().tab = el.dataset.v; UI.space = "jrn"; go("pieces"); };
   const st = document.createElement("style"); st.textContent = `.pz-ql .pz-qi{position:relative;padding-left:32px!important}.pz-ck{position:absolute;left:9px;top:50%;transform:translateY(-50%);margin:0;width:16px;height:16px;cursor:pointer;accent-color:#0F3D3E;z-index:1}.pz-ck0{display:none}
 .pz-lot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#0F3D3E;color:#fff;border-radius:10px;padding:6px 10px;margin:6px 8px}.pz-lot .btn.pri{background:#F5B700;color:#0F1B33;border-color:#F5B700}.pz-lot .lnk{color:#fff}.pz-lot0{padding:4px 12px}
@@ -647,3 +642,87 @@ Object.assign(ACT, {
 function sdIsAvoir(text, ttc) { const h = String(text || "").split(/\n/).slice(0, 8).join("\n"); return (ttc || 0) < 0 || /^\s*(facture d.?)?avoir\b|avoir\s*(n[°o]|num)|note de cr[ée]dit|credit note|facture rectificative/im.test(h); }
 (function () { const _p = parseInvoiceText; parseInvoiceText = function (text) { const inv = _p.apply(this, arguments); try { if (inv.type === "AV" && !sdIsAvoir(text, inv.ttc)) inv.type = "FA"; } catch (e) { } return inv; };
   if (typeof pzAutoFill === "function") { const _af = pzAutoFill; pzAutoFill = function (it) { const r = _af.apply(this, arguments); try { if (it && it.inv && it.inv.type === "AV" && it.text && !sdIsAvoir(it.text, it.inv.ttc)) { it.inv.type = "FA"; it.auto = (it.auto || []).filter(x => !/^Avoir détecté/.test(x)); try { it.lib = pzAutoLib(it); } catch (e) { } xSave("inbox", it); } } catch (e) { } return r; }; } })();
+
+/* ============================================================================
+   Corrections : 👁 ouvre l'espace complet « Pièces à traiter » (document original + formulaire
+   complet : créer un tiers, un journal, un compte, cut-offs, règlement…), conservation de
+   l'original, sélection multiple + clic droit + raccourcis, saisie automatique visible
+   ========================================================================== */
+function sdGoPiece(id) { const it = sdIt(id); const st = PZ(); st.tab = "pieces"; st.f = "all"; st.q = ""; st.st = !it ? "a_traiter" : it.statut === "comptabilisee" ? "done" : it.statut === "a_traiter" ? "a_traiter" : "dup"; st.cur = id; UI.modal = null; UI.space = "saisie"; if (UI.view !== "pieces") go("pieces"); else render(); }
+ACT.sdView = el => sdGoPiece(el.dataset.id);
+sdOpenView = (ids, id) => sdGoPiece(id || ids[0]);
+ACT.sdEDoc = el => { const e = E.find(x => x.id === el.dataset.id); if (!e) return; if (e.inboxId && ensureX() && XS.inbox.some(x => x.id === e.inboxId)) return sdGoPiece(e.inboxId); openModal({ type: "gDocs", e: e.id, mode: "open" }); setTimeout(() => { try { gPreview(e, 0); } catch (x) { } }, 50); };
+
+/* l'original de chaque pièce est conservé (GED / base) pour être revu tel quel */
+(function () {
+  const _add = inboxAddFile; inboxAddFile = async function (name, bytes) { const before = (XS.inbox || []).length; const r = await _add.apply(this, arguments);
+    if (!UI._sdAdding && sdCfg().auto === "1") { let k = 0; (XS.inbox || []).slice(before).forEach(it => { try { if (it.statut === "a_traiter" && !inboxCheck(it).length && !sdChecks(it).W.length && inboxPost(it, true)) k++; } catch (e) { } }); if (k) setTimeout(() => toast(k + " pièce(s) sans anomalie comptabilisée(s) automatiquement ✓"), 400); }
+    for (const it of (XS.inbox || []).slice(before)) { if (it.src || it.orig) continue; const b = (UI.inBytes || {})[it.id]; if (!b) continue; try { const head = latin1(b.subarray(0, 5)); const mime = head.startsWith("%PDF") ? "application/pdf" : /^\xFF\xD8/.test(head) ? "image/jpeg" : /^\x89PNG/.test(head) ? "image/png" : /^\s*</.test(head) ? "text/xml" : "application/octet-stream"; it.orig = await gedPut(b, mime, it.nom); xSave("inbox", it); } catch (e) { console.warn("original", e); } }
+    return r; };
+  const _ib = inboxBytes; inboxBytes = async function (it) { try { return await _ib.apply(this, arguments); } catch (e) { if (it && it.orig) { const b = await gedGet({ store: it.orig }); (UI.inBytes ||= {})[it.id] = b; return b; } throw e; } };
+})();
+
+/* émetteur : lettres espacées (« A R G E N T E U I L ») et nom de ville écartés */
+(function () { const _v = sdVendorFix; sdVendorFix = function (inv, text) { const v = inv.vendeur ||= {}; const L = String(text || "").split(/\n/).map(x => x.trim()).filter(Boolean);
+  const spaced = n => /^([A-ZÀ-Ü]{1,2}\s){2,}[A-ZÀ-Ü]{1,3}$/.test(String(n || "").trim()); const city = n => { const k = String(n || "").replace(/\s+/g, "").toUpperCase(); return k.length > 2 && L.some(l => new RegExp("\\b\\d{5}\\s+" + k.replace(/[^A-ZÀ-Ü]/g, ".") + "\\b", "i").test(l.replace(/\s+(?=[A-ZÀ-Ü]\b)/g, ""))); };
+  if (spaced(v.nom)) v.nom = v.nom.replace(/\s+/g, ""); if (v.nom && city(v.nom)) v.nom = "";
+  _v.apply(this, arguments);
+  if (v.nom && city(v.nom)) { const c = L.slice(0, 15).map(l => l.split(/\s{3,}/)[0].trim()).find(x => x && x !== v.nom && !city(x) && /[A-Za-zÀ-ÿ]{3}/.test(x) && x.length <= 60 && !/^\d|\b\d{5}\b|:|t[ée]l|e-?mail|quittance|facture|loyer|logement|^m(me|lle|r)?\.?\s/i.test(x) && !(S && sdKey(x) === sdKey(S.nom))); if (c) v.nom = c; } }; })();
+
+/* nouvelle version du moteur : les pièces en attente non confirmées sont relues une fois */
+(function () { const _a = sdApply; sdApply = function (it) { const r = _a.apply(this, arguments); if (it && it.nc) it.nc.v = 3; return r; };
+  const relire = () => { if (!S || !ensureX()) return; let n = 0; XS.inbox.forEach(it => { if (/a_traiter|doublon/.test(it.statut) && !it.ncOk && (it.nc || {}).v !== 3) { try { if (it.text && it.inv) { sdVendorFix(it.inv, it.text); } sdApply(it, false); sdPzSync(it); try { it.lib = pzAutoLib(it); } catch (e) { } xSave("inbox", it); n++; } catch (e) { } } }); return n; };
+  const _v = VIEWS.pieces; VIEWS.pieces = function () { try { relire(); } catch (e) { } return _v.apply(this, arguments); }; })();
+
+/* total lu différent : un clic pour reprendre le total de la pièce */
+ACT.sdUseTtc = () => { const { it } = pzCur(); if (!it || it.statut === "comptabilisee" || !it.inv.ttc) return; const T = inboxTotals(it); const d = it.inv.ttc - T.ttc; if (!d) return;
+  if (it.lignes.length === 1) { const l = it.lignes[0]; const ttc = it.inv.ttc; l.ht = Math.round(ttc * 10000 / (10000 + Number(l.taux || 0))); l.tva = ttc - l.ht; }
+  else { const l0 = it.lignes[0]; it.lignes.push({ compte: l0.compte, cat: l0.cat, lib: "Complément au total de la pièce", ht: d, taux: 0, tva: 0, manual: true }); }
+  sdTouch(it, "Total aligné sur la pièce : " + eur(it.inv.ttc)); render(); };
+
+/* ---------- sélection multiple, Ctrl+A, Suppr, clic droit ---------- */
+function sdSelCtx() { if (UI.view !== "pieces") return null; const st = PZ(); if (st.tab === "masse") { const f = UI.sub.sdm ||= { f: "tout", q: "", sel: [], cat: "" }; return { k: "m", get: () => f.sel, set: v => { f.sel = v; }, all: () => sdRows(f).map(x => x.id) }; } if (st.tab === "tx") return null; return { k: "q", get: () => UI.pzSel || [], set: v => { UI.pzSel = v; }, all: () => pzQueue().map(x => x.id) }; }
+function sdTrash(ids) { let n = 0; ids.forEach(id => { const it = sdIt(id); if (!it || it.statut === "comptabilisee" || it.statut === "supprimee") return; it.prevSt = it.statut; it.statut = "supprimee"; it.delAt = new Date().toISOString(); it.delBy = sdWho(); sdTouch(it, "Mise à la corbeille"); n++; }); toast(n + " pièce(s) mise(s) à la corbeille · restauration possible (Écartées)."); }
+function sdRestore(ids) { let n = 0; ids.forEach(id => { const it = sdIt(id); if (!it || it.statut !== "supprimee") return; it.statut = it.prevSt || "a_traiter"; delete it.delAt; delete it.delBy; sdTouch(it, "Restaurée"); n++; }); toast(n + " pièce(s) restaurée(s) ✓"); }
+function sdPurgeIds(ids) { if (!canPurge()) { toast("La suppression définitive est réservée à l'éditeur."); return; } const L = ids.map(sdIt).filter(it => it && it.statut !== "comptabilisee"); const keep = ids.length - L.length; if (!L.length) { toast("Aucune pièce supprimable définitivement (les pièces comptabilisées se suppriment depuis leur écriture)."); return; }
+  confirmBox("Supprimer définitivement", `${L.length} pièce(s) et leur original seront effacés définitivement. Cette action ne peut pas être annulée.${keep ? `<br>${keep} pièce(s) comptabilisée(s) conservée(s).` : ""}`, "Supprimer définitivement", () => { L.forEach(it => { try { actAdd && actAdd("del", "Pièce supprimée définitivement · " + (it.nom || it.piece || "")); } catch (e) { } xDel("inbox", it.id); }); const c = sdSelCtx(); if (c) c.set([]); toast(L.length + " pièce(s) supprimée(s) définitivement."); render(); }, true); }
+function sdCtxHTML() { const M = UI.sdCtx; if (!M) return ""; const ids = M.ids; const its = ids.map(sdIt).filter(Boolean); const any = s => its.some(it => s.test(it.statut)); const n = its.length;
+  const item = (act, lab, kbd, cls) => `<button class="sd-cx-i ${cls || ""}" data-act="sdCx" data-v="${act}"><span>${lab}</span>${kbd ? `<kbd>${kbd}</kbd>` : ""}</button>`;
+  return `<div class="sd-cx-bg" data-act="sdCxX"></div><div class="sd-cx" style="left:${M.x}px;top:${M.y}px"><div class="sd-cx-h">${n} pièce(s) sélectionnée(s)</div>
+    ${n === 1 ? item("open", "👁 Ouvrir", "Entrée") : ""}${any(/^a_traiter$/) ? item("post", "✓ Valider et comptabiliser", "Ctrl+Entrée") : ""}${item("all", "☑ Tout sélectionner", "Ctrl+A")}
+    <div class="sd-cx-s"></div>${any(/a_traiter|doublon|litige|refusee/) ? item("trash", "🗑 Mettre à la corbeille", "Suppr") : ""}${any(/supprimee/) ? item("rest", "↺ Restaurer") : ""}${canPurge() && any(/^(?!comptabilisee)/) ? item("purge", "✕ Supprimer définitivement", "Maj+Suppr", "bad") : ""}
+    <div class="sd-cx-s"></div>${item("none", "Désélectionner", "Échap")}</div>`; }
+Object.assign(ACT, {
+  sdCxX: () => { UI.sdCtx = null; render(); },
+  sdCx: el => { const M = UI.sdCtx; UI.sdCtx = null; if (!M) return; const c = sdSelCtx(); const ids = M.ids; const v = el.dataset.v;
+    if (v === "open") return sdGoPiece(ids[0]); if (v === "all") { c && c.set(c.all()); return render(); } if (v === "none") { c && c.set([]); return render(); }
+    if (v === "post") { sdBatchPost(ids); c && c.set([]); return render(); } if (v === "trash") { sdTrash(ids); c && c.set([]); return render(); } if (v === "rest") { sdRestore(ids); c && c.set([]); return render(); } if (v === "purge") return sdPurgeIds(ids); }
+});
+document.addEventListener("contextmenu", ev => { if (UI.view !== "pieces" || UI.modal) return; const row = ev.target.closest && ev.target.closest(".pz-qi[data-id], .sd-r[data-id]"); if (!row) return; ev.preventDefault(); const c = sdSelCtx(); if (!c) return; const id = row.dataset.id; let sel = c.get(); if (!sel.includes(id)) { sel = [id]; c.set(sel); }
+  UI.sdCtx = { ids: sel.slice(), x: Math.min(ev.clientX, window.innerWidth - 270), y: Math.min(ev.clientY + window.scrollY, window.scrollY + window.innerHeight - 300) }; render(); });
+document.addEventListener("keydown", ev => { if (UI.view !== "pieces" || UI.modal) return; const t = ev.target; if (t && t.closest && t.closest("input:not([type=checkbox]), textarea, select, [contenteditable]")) return; const c = sdSelCtx(); if (!c) return;
+  if ((ev.ctrlKey || ev.metaKey) && (ev.key === "a" || ev.key === "A")) { ev.preventDefault(); c.set(c.all()); UI.sdCtx = null; render(); toast(c.get().length + " pièce(s) sélectionnée(s) · clic droit pour les actions"); }
+  else if (ev.key === "Escape" && (c.get().length || UI.sdCtx)) { c.set([]); UI.sdCtx = null; render(); }
+  else if (ev.key === "Delete" && c.get().length) { ev.preventDefault(); if (ev.shiftKey) sdPurgeIds(c.get().slice()); else { sdTrash(c.get()); c.set([]); render(); } }
+  else if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter" && c.get().length) { ev.preventDefault(); sdBatchPost(c.get()); c.set([]); render(); } });
+(function () {
+  /* toutes les pièces (validées, écartées, corbeille) sont sélectionnables dans la file */
+  const _v = VIEWS.pieces; VIEWS.pieces = function () { let h = _v.apply(this, arguments); if (!S || !ensureX()) return h; const st = PZ(); const sel = new Set(UI.pzSel || []);
+    if (st.tab !== "tx" && st.tab !== "masse") h = h.replace(/<span class="pz-ck0"><\/span>/g, "").replace(/<a class="pz-qi ([^"]*)" data-act="pzPick" data-id="([^"]+)">(?!<input)/g, (m, c, id) => m + `<input type="checkbox" class="pz-ck" data-act="pzCk" data-id="${id}" ${sel.has(id) ? "checked" : ""} title="Sélectionner (Ctrl+A : tout, clic droit : actions)">`);
+    h = h.replace(/(<div class="pz-lot"><b>\d+ sélectionnée\(s\)<\/b>)/, `$1<button class="btn sm" data-act="sdCxOpen">⋯ Actions</button>`);
+    const { it } = (st.tab !== "tx" && st.tab !== "masse") ? (pzCur() || {}) : {};
+    if (it && it.inv && it.inv.ttc && it.statut !== "comptabilisee" && Math.abs(it.inv.ttc - inboxTotals(it).ttc) > 2) h = h.replace(/(<div class="pz-warn">Le total saisi \([^<]*<\/div>)/, `$1<button class="btn sm" data-act="sdUseTtc" style="margin-top:6px">↺ Reprendre le total de la pièce (${eur(it.inv.ttc)} €)</button>`);
+    const cfg = sdCfg(); h = h.replace('<div class="sd-h"><h2>Déposez vos documents</h2>', `<div class="sd-h"><h2>Déposez vos documents</h2><label class="sd-auto" title="Oui : les pièces sans aucune anomalie sont comptabilisées dès le dépôt ; les autres attendent votre validation"><input type="checkbox" data-ch="sdAuto" ${cfg.auto === "1" ? "checked" : ""}><i></i>Saisie automatique</label>`);
+    return h + sdCtxHTML(); };
+  const _q = pzQueue; pzQueue = function () { const st = PZ(); const L = _q.apply(this, arguments); if (st.st !== "dup" && st.st !== "all") return L; const extra = (XS.inbox || []).filter(x => x.statut === "supprimee" && (st.f === "all" || x.sens === st.f) && !L.includes(x)); return L.concat(extra); };
+  const _m = sdMasse; sdMasse = function () { return _m.apply(this, arguments) + sdCtxHTML(); };
+  ACT.pzCk = (el, ev) => { if (ev) ev.stopPropagation(); const S0 = UI.pzSel || []; const id = el.dataset.id; if (ev && ev.shiftKey && UI._pzLast) { const L = pzQueue().map(x => x.id); const a = L.indexOf(UI._pzLast), b = L.indexOf(id); if (a >= 0 && b >= 0) { const r = L.slice(Math.min(a, b), Math.max(a, b) + 1); UI.pzSel = [...new Set(S0.concat(r))]; UI._pzLast = id; return render(); } } UI._pzLast = id; UI.pzSel = S0.includes(id) ? S0.filter(x => x !== id) : S0.concat(id); render(); };
+  ACT.pzCkAll = () => { const L = pzQueue().map(x => x.id); UI.pzSel = (UI.pzSel || []).length === L.length ? [] : L; render(); };
+  ACT.sdCxOpen = el => { const c = sdSelCtx(); if (!c || !c.get().length) return; const r = el.getBoundingClientRect(); UI.sdCtx = { ids: c.get().slice(), x: Math.min(r.left, window.innerWidth - 270), y: r.bottom + 4 + window.scrollY }; render(); };
+  CHG.sdAuto = el => { (S.sdCfg ||= {}).auto = el.checked ? "1" : "0"; Store.touch(); toast(el.checked ? "Saisie automatique : les pièces sans anomalie seront comptabilisées dès le dépôt" : "Saisie automatique désactivée : chaque pièce attend votre validation"); render(); };
+  /* écartées : la mention « supprimée » apparaît dans la file */
+  const st = document.createElement("style"); st.textContent = `.sd-cx-bg{position:fixed;inset:0;z-index:35}.sd-cx{position:absolute;z-index:36;width:260px;background:#fff;border:1px solid #DCE3EF;border-radius:12px;box-shadow:0 18px 48px rgba(15,27,51,.25);padding:6px;font-size:13px}
+.sd-cx-h{font-size:11.5px;font-weight:800;color:#8590A8;padding:4px 8px 6px;text-transform:uppercase;letter-spacing:.04em}.sd-cx-i{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;background:none;padding:7px 8px;border-radius:8px;cursor:pointer;font:inherit;text-align:left;color:#14202B}.sd-cx-i:hover{background:#F1F5F4}.sd-cx-i.bad{color:#C2364B}.sd-cx-i kbd{font:11px "IBM Plex Mono",monospace;color:#8590A8;background:#F4F6FA;border-radius:4px;padding:1px 5px}.sd-cx-s{height:1px;background:#EEF1F6;margin:4px 0}
+.sd-auto{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#0F3D3E;cursor:pointer;margin-left:12px;background:#F2F7F6;border-radius:999px;padding:4px 12px 4px 6px}.sd-auto input{display:none}.sd-auto i{width:30px;height:18px;border-radius:999px;background:#C8D2D0;position:relative;transition:background .15s}.sd-auto i::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s}.sd-auto input:checked+i{background:#1F8A55}.sd-auto input:checked+i::after{left:14px}
+.sd-h{justify-content:flex-start}.sd-h>:last-child{margin-left:auto}`; document.head.appendChild(st);
+})();

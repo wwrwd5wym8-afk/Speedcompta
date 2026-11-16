@@ -114,7 +114,7 @@ document.addEventListener("drop", ev => { if (UI.view !== "cptFou" || !(ev.targe
 /* vue d'ensemble : accès direct aux espaces */
 const _vCompta = VIEWS.compta;
 VIEWS.compta = () => {
-  const T = [["cli", "Clients", "contacts", "c7"], ["fou", "Fournisseurs", "achats", "c5"], ["bq", "Banque", "banque", "c3"], ["fisc", "Fiscalité", "tva", "c4"], ["emp", "Emprunts", "trend", "c6"], ["immo", "Immobilisations", "doc", "c2"], ["rap", "Rapports", "rapports", "c6"], ["clo", "Clôture", "lock", "c5"], ["fec", "FEC", "doc", "c1"]];
+  const T = [["saisie", "Saisie", "doc", "c1"], ["cli", "Clients", "contacts", "c7"], ["fou", "Fournisseurs", "achats", "c5"], ["bq", "Banque", "banque", "c3"], ["fisc", "Fiscalité", "tva", "c4"], ["emp", "Emprunts", "trend", "c6"], ["immo", "Immobilisations", "doc", "c2"], ["rap", "Rapports", "rapports", "c6"], ["clo", "Clôture", "lock", "c5"], ["fec", "FEC", "doc", "c1"]];
   const tiles = `<div class="sp-grid">${T.map(([k, l, i, c]) => `<a class="sp-tile" data-act="spTab" data-sp="${k}" data-i="0"><span class="kic ${c}">${ico(IC[i] ? i : "doc")}</span><b>${l}</b><small>${SPACES[k].tabs.slice(0, 3).map(t => t[1]).join(" · ")}</small></a>`).join("")}</div>`;
   const h = _vCompta(); const i = h.indexOf('<div class="grid g4"'); const j = h.indexOf('<h3 class="cpt-h">');
   const head = i >= 0 ? h.slice(0, i) : ""; const kpi = i >= 0 && j > i ? h.slice(i, j) : "";
