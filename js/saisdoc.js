@@ -49,9 +49,10 @@ const SD_R = [
   [/\b(credit[ -]bail|leasing financier|loyer de credit[ -]bail)\b/, "cb"],
   [/\b(location (de )?(materiel|vehicule|engin|nacelle|photocopieur|copieur|voiture|utilitaire)|\blld\b|loueur|kiloutou|loxam|hertz|europcar|\bavis\b location|sixt|\bada\b|rent a car|leasys|arval|ayvens|ald automotive)\b/, "loc"],
   [/\b(maintenance|contrat d entretien|reparation|depannage|sav|revision|vidange|garage|norauto|feu vert|midas|speedy|pneus?|carrosserie|controle technique|nettoyage|menage|proprete|desinsectisation|elagage|plomberie|plombier|electricien|serrurier)\b/, "entr"],
-  [/\b(assurances?|axa|allianz|maif|macif|maaf|mma|groupama|generali|hiscox|matmut|swisslife|swiss life|april|rc pro|responsabilite civile|multirisque|cotisation d assurance|prime d assurance)\b/, "ass", { notva: 1 }],
+  [/\b(assurances?|rc pro|responsabilite civile|multirisque|cotisation d assurance|prime d assurance|prime annuelle|taxes? d assurance|contrat d assurance|police d assurance)\b/, "ass", { notva: 1 }],
+  [/\b(axa|allianz|maif|macif|maaf|mma|groupama|generali|hiscox|matmut|swisslife|swiss life|april|covea|aviva|abeille)\b/, "ass", { notva: 1, vend: 1 }],
   [/\b(expert[ -]comptable|cabinet comptable|expertise comptable|commissaire aux comptes|tenue comptable|bilan annuel|lettre de mission|paie externalisee|gestion de la paie)\b/, "fin"],
-  [/\b(avocats?|selarl d avocats|cabinet d avocats|conseil juridique|juriste|protection juridique|honoraires?|contentieux|redaction (de |d )?(contrat|statuts|acte)s?|mise en demeure)\b/, "jur"],
+  [/\b(avocats?|selarl d avocats|cabinet d avocats|conseil juridique|juriste|protection juridique|honoraires? d avocat|contentieux|redaction (de |d )?(contrat|statuts|acte)s?|mise en demeure)\b/, "jur"],
   [/\b(notaire|huissier|commissaire de justice|greffe|infogreffe|kbis|formalites|annonce legale|annonces legales|depot des comptes|legalstart|captain contrat|inpi)\b/, "actes"],
   [/\b(publicite|annonce|campagne|google ads|facebook ads|meta platforms|linkedin ads|flyers?|imprimerie|vistaprint|cartes de visite|salon professionnel|stand|sponsoring|signaletique|enseigne|goodies|objets publicitaires)\b/, "pub"],
   [/\b(cadeaux?|coffrets?|panier garni|chocolats? offerts?)\b/, "cad", { cad: 1 }],
@@ -63,7 +64,8 @@ const SD_R = [
   [/\b(papeterie|fournitures de bureau|lyreco|bureau vallee|office depot|jpg|top office|raja|cartouches?|toners?|ramettes?|stylos?|enveloppes|classeurs?|agendas?)\b/, "bur"],
   [/\b(outillage|outils?|leroy merlin|castorama|brico depot|bricomarche|mr bricolage|wurth|manutan|petit materiel|consommables|quincaillerie|visserie|equipements? de protection|epi)\b/, "equip"],
   [/\b(logiciels?|licences?|abonnement (mensuel|annuel)|saas|microsoft 365|office 365|google workspace|g suite|adobe|canva|notion|slack|zoom|dropbox|salesforce|hubspot|shopify|wix|squarespace|sage|cegid|quickbooks|ovh|ovhcloud|ionos|o2switch|gandi|hostinger|aws|amazon web services|heroku|github|atlassian|jira|openai|chatgpt|anthropic|claude|mailchimp|brevo|sendinblue|calendly|docusign|yousign|nom de domaine|hebergement web|serveur dedie|cloud)\b/, "log"],
-  [/\b(frais bancaires|commission(s)? (bancaires?|d intervention)|agios|cotisation carte|tenue de compte|frais de tenue|qonto|shine|bnp paribas|credit agricole|societe generale|lcl|caisse d epargne|banque populaire|credit mutuel|cic|boursorama|revolut|stripe|sumup|paypal|lydia pro|frais de virement)\b/, "bank", { notva: 1 }],
+  [/\b(frais bancaires|commission(s)? (bancaires?|d intervention|de mouvement)|agios|cotisation carte|tenue de compte|frais de tenue|frais de virement|interets debiteurs|releve de frais)\b/, "bank", { notva: 1 }],
+  [/\b(qonto|shine|bnp paribas|credit agricole|societe generale|lcl|caisse d epargne|banque populaire|credit mutuel|cic|boursorama|revolut|stripe|sumup|paypal|lydia pro|la banque postale|hsbc)\b/, "bank", { notva: 1, vend: 1 }],
   [/\b(cotisations?|adhesion|syndicat|chambre de commerce|cci|cma|ordre des|federation|association professionnelle)\b/, "cotis"],
   [/\b(abonnement (presse|journal|magazine)|journaux|magazines?|revues?|livres?|ouvrages?|documentation|dalloz|lefebvre|editions legislatives|les echos|le monde|le figaro)\b/, "doc"],
   [/\b(formation|seminaire|colloque|conference|e[ -]learning|stage de|certification|cpf)\b/, "form"],
@@ -76,6 +78,20 @@ const SD_R = [
   [/\b(cfe|cotisation fonciere|taxe fonciere|impots\.gouv|dgfip|droits d enregistrement|taxe sur les vehicules|tvs|vignette)\b/, "taxe", { notva: 1 }],
   [/\b(amende|contravention|antai|majoration|penalites? de retard)\b/, "amende", { notva: 1 }],
   [/\b(don|dons|pourboire|mecenat)\b/, "don", { notva: 1 }]];
+/* type de document lu dans le titre */
+const SD_TITLE = [
+  [/quittance( de loyer)?\b/, "loyer"],
+  [/avis d ?echeance|appel de loyer|appel de fonds/, "", (t) => /assurance|prime|police|contrat n|garantie|sinistre/.test(t) ? "ass" : /credit[ -]bail|leasing/.test(t) ? "cb" : /charges de copropriete|syndic/.test(t) ? "charg" : /loyer|bail|locataire|local|lot n/.test(t) ? "loyer" : ""],
+  [/note d ?honoraires|releve d ?honoraires/, "", (t) => /avocat|juridique|contentieux|barreau/.test(t) ? "jur" : /notaire|huissier|commissaire de justice/.test(t) ? "actes" : "fin"],
+  [/releve de frais( bancaires)?|frais bancaires|tarification bancaire/, "bank"],
+  [/appel de cotisation|avis de cotisation|bulletin d adhesion/, "", (t) => /assurance|prime/.test(t) ? "ass" : "cotis"],
+  [/avis d ?imposition|taxe fonciere|cotisation fonciere|avis de taxe/, "taxe"],
+  [/echeancier de credit[ -]bail|contrat de credit[ -]bail/, "cb"],
+  [/avis de contravention|amende forfaitaire/, "amende"],
+  [/facture d ?(electricite|energie|gaz)|votre facture (edf|engie)/, "energ"],
+  [/facture (de )?(telephone|mobile|internet|telecom)/, "tel"],
+  [/billet electronique|e-billet|carte d embarquement|justificatif de voyage/, "depl"],
+  [/note de restaurant|addition\b/, "alim"]];
 /* biens durables : immobilisation au-delà du seuil */
 const SD_IMMO = [[/\b(ordinateur|pc portable|laptop|macbook|imac|ecran|moniteur|serveur|imprimante multifonction|ipad|tablette|smartphone|iphone|station de travail|nas)\b/, "immoinf", "equip"], [/\b(mobilier|bureau (assis debout|droit|d angle)|fauteuil|chaise|armoire|rayonnages?|etageres?|caisson|canape|table de reunion)\b/, "immomob", "equip"], [/\b(vehicule|voiture|camion|utilitaire|fourgon|scooter|moto|immatriculation|carte grise)\b/, "immoveh", ""], [/\b(machine|compresseur|tour a metaux|fraiseuse|chariot elevateur|transpalette electrique|four professionnel|centrale|presse|groupe electrogene|nacelle)\b/, "immomat", "equip"], [/\b(licence perpetuelle|logiciel (acquis|achete|sur mesure))\b/, "immolog", "log"]];
 /* ventes */
@@ -97,7 +113,7 @@ function sdLearn() { return (S.sdLearn ||= {}); }
 function sdClassify(it) {
   const sens = it.sens === "V" ? "V" : "A"; const C = sdCats(); const cfg = sdCfg(); const sc = {}; const why = {};
   const add = (cat, pts, w) => { if (!cat) return; const c = C.find(x => x.id === cat); if (!c || c.off || (c.sens || "A") !== sens) return; sc[cat] = (sc[cat] || 0) + pts; (why[cat] ||= []).push(w); };
-  const t = it.tiers ? tiersBy(it.tiers) : null; const party = sdParty(it); const vname = sdNorm((t && t.nom) || party.nom || ""); const desA = sdDesigA(it).map(x => ({ d: sdNorm(x.d), a: x.a })); const des = desA.map(x => x.d); const sumA = desA.reduce((s0, x) => s0 + x.a, 0) || 1; const txt = sdNorm(String(it.text || "").slice(0, 5000)); const lib = sdNorm(it.lib || "");
+  const t = it.tiers ? tiersBy(it.tiers) : null; const party = sdParty(it); const vname = sdNorm((t && t.nom) || party.nom || ""); const desA = sdDesigA(it).map(x => ({ d: sdNorm(x.d), a: x.a })); const des = desA.map(x => x.d); const sumA = desA.reduce((s0, x) => s0 + x.a, 0) || 1; const txt = sdNorm(String(it.text || "").split(/\n/).filter(l => !/iban|bic|rib\b|swift|domiciliation|titulaire du compte|virement|prelevement|prélèvement|paiement (re[çc]u|par)|r[èe]glement par|payable|banque|bank|cr[ée]dit agricole|cic\b|lcl\b/i.test(l)).join("\n").slice(0, 5000)); const lib = sdNorm(it.lib || "");
   const L = sdLearn(); const keys = [it.tiers && "t:" + it.tiers, sdKey(party.nom) && "n:" + sdKey(party.nom)].filter(Boolean);
   /* 1. corrections apprises */
   keys.forEach(k => { const m = L[k]; if (!m || !m.c) return; const best = Object.entries(m.c).sort((a, b) => b[1] - a[1])[0]; if (!best) return; const n = best[1], tot = Object.values(m.c).reduce((a, b) => a + b, 0); add(best[0], n >= 2 && n / tot >= .7 ? 95 : 82, "appris sur " + n + " facture(s) de ce " + (sens === "V" ? "client" : "fournisseur")); });
@@ -109,12 +125,17 @@ function sdClassify(it) {
   C.forEach(c => { if ((c.sens || "A") !== sens || !c.kw) return; c.kw.split(",").map(k => sdNorm(k).trim()).filter(k => k.length >= 3).forEach(k => { if (vname.includes(k) || des.some(d => d.includes(k)) || lib.includes(k)) add(c.id, 92, "mot-clé « " + k + " »"); else if (txt.includes(k)) add(c.id, 60, "mot-clé « " + k + " » dans la pièce"); }); });
   try { (inboxCfg().regles || []).forEach(r => { const m = sdNorm(r.mot).trim(); if (m && r.compte && (vname + " " + txt).includes(m)) { const c = sdCatByAcc(r.compte, sens); if (c) add(c.id, 90, "règle « " + r.mot + " »"); } }); } catch (e) { }
   /* 4. règles de nature : lignes de la facture, nom, libellé, texte */
+  /* titre du document (quittance, avis d'échéance, note d'honoraires…) : signal le plus fort */
+  const head = sdNorm((it.nom || "") + "\n" + String(it.text || "").split(/\n/).slice(0, 14).join("\n")); const full = sdNorm(String(it.text || "").slice(0, 6000));
+  if (sens === "A") SD_TITLE.forEach(([re, cat, ctx]) => { if (re.test(head)) { const c = typeof ctx === "function" ? ctx(full, vname) : cat; if (c) add(c, 97, "type de document : « " + (head.match(re) || [""])[0].trim() + " »"); } });
   const R = sens === "V" ? SD_RV.map(([re, c]) => [re, c, {}]) : SD_R;
-  R.forEach(([re, cat]) => { const hit = desA.filter(x => re.test(x.d)); const hd = hit.length; if (hd) { const sh = desA.length > 1 ? hit.reduce((s0, x) => s0 + x.a, 0) / sumA : 1; add(cat, Math.round(48 + 32 * sh + Math.min(8, hd * 3)), "désignation de la facture" + (sh < .5 ? " (ligne secondaire)" : "")); } if (re.test(vname)) add(cat, sens === "V" ? 30 : 74, "nom du " + (sens === "V" ? "client" : "fournisseur")); if (re.test(lib)) add(cat, 50, "libellé"); if (!hd && re.test(txt)) { const n = (txt.match(new RegExp(re.source, "g")) || []).length; add(cat, 34 + Math.min(16, n * 4), "texte de la pièce"); } });
+  R.forEach(([re, cat, o]) => { if (o && o.vend) { if (re.test(vname)) add(cat, 78, "nom du fournisseur"); return; } const hit = desA.filter(x => re.test(x.d)); const hd = hit.length; if (hd) { const sh = desA.length > 1 ? hit.reduce((s0, x) => s0 + x.a, 0) / sumA : 1; add(cat, Math.round(48 + 32 * sh + Math.min(8, hd * 3)), "désignation de la facture" + (sh < .5 ? " (ligne secondaire)" : "")); } if (re.test(vname)) add(cat, sens === "V" ? 30 : 74, "nom du " + (sens === "V" ? "client" : "fournisseur")); if (re.test(lib)) add(cat, 50, "libellé"); if (!hd && re.test(txt)) { const n = (txt.match(new RegExp(re.source, "g")) || []).length; add(cat, 34 + Math.min(16, n * 4), "texte de la pièce"); } });
   /* 5. code APE du fournisseur */
   if (sens === "A") { const naf = sdNaf(it); if (naf) { const m = SD_NAF.find(([re]) => re.test(naf)); if (m) add(m[1], 72, "code APE " + naf); } }
   /* 6. proposition de l'IA */
   const ia = it.inv && it.inv.ia; if (ia && ia.compte) { const c = sdCatByAcc(ia.compte, sens); if (c) add(c.id, 66, "lecture IA"); }
+  /* arbitrage par l'IA (lecture complète de la pièce) */
+  if (it.ncIA && it.ncIA.cat) add(it.ncIA.cat, it.ncIA.conf >= 80 ? 91 : 70, "lecture IA" + (it.ncIA.why ? " : " + it.ncIA.why : ""));
   /* défaut */
   if (sens === "V") { const d = sdCatByAcc((t && t.defaut) || (typeof MC === "function" && MC("factu", "compteDefaut")) || "706000", "V"); add(d ? d.id : "vpres", 40, "compte de vente habituel"); }
   let rank = Object.entries(sc).sort((a, b) => b[1] - a[1]);
@@ -537,3 +558,92 @@ Object.assign(CHG, {
 .sdv-pv summary{cursor:pointer;font-weight:700;font-size:12.5px;color:#13585A;padding:4px 0}.sdv-pv table{font-size:12px}
 .sd-pj{margin-right:4px}body:has(.sdv-body) .ai-fab{display:none!important}body:has(.sdv-body) #toast{top:16px!important;bottom:auto!important}
 @media (max-width:900px){.sdv-body{grid-template-columns:1fr;grid-template-rows:45vh auto}.modal:has(.sdv-body){height:96vh}.modal:has(.sdv-body)>.panel-b{overflow:auto}}`; document.head.appendChild(st); })();
+
+/* ============================================================================
+   Lecture renforcée des pièces : vrai émetteur (pas le titre du document),
+   montants sans centimes (« 750 € »), TVA ne portant que sur une partie (loyer + charges)
+   ========================================================================== */
+const SD_TITLES = /^(quittance|avis d.?[ée]ch[ée]ance|note d.?honoraires|relev[ée]|facture|avoir|devis|bon de|ticket|re[çc]u|appel de|avis de|[ée]ch[ée]ancier|attestation|contrat|bulletin|note de|invoice|duplicata|page)(?![a-z])/i;
+function sdVendorFix(inv, text) {
+  const L = String(text || "").split(/\n/).map(x => x.trim()).filter(Boolean); const ours = sdKey((S && S.nom) || "");
+  const bad = n => !n || n.length < 3 || SD_TITLES.test(n) || /:|\d{2}\/\d{2}\/\d{2,4}|^(date|p[ée]riode|locataire|client|factur[ée]|adresse|tel|t[ée]l[ée]phone|email|siret|siren|tva|total|montant)\b/i.test(n) || (ours && sdKey(n) === ours);
+  const v = inv.vendeur ||= {}; if (!bad(v.nom)) return;
+  for (const l of L.slice(0, 25)) { const m = l.match(/^(?:bailleur|[ée]metteur|fournisseur|vendeur|prestataire|soci[ée]t[ée]|raison sociale|cabinet|propri[ée]taire|gestionnaire|exp[ée]diteur|assureur|organisme)\s*:\s*(.{3,60})$/i); if (m && !(ours && sdKey(m[1]) === ours)) { v.nom = m[1].trim(); return; } }
+  const c = L.slice(0, 12).map(l => l.split(/\s{3,}/)[0].trim()).find(x => !bad(x) && /[A-Za-zÀ-ÿ]{3}/.test(x) && x.length <= 60 && !/^\d/.test(x) && !/\b\d{5}\b/.test(x)); if (c) v.nom = c;
+}
+function sdAmtFix(inv, text) {
+  if (inv.ttc && inv.ttc > 0) return; const L = String(text || "").split(/\n/);
+  const amt = s => { const m = String(s).match(/(-?\d{1,3}(?:[  .]\d{3})*(?:,\d{1,2})?|-?\d+(?:[.,]\d{1,2})?)\s*(?:€|\beur(?:os)?\b)/i) || String(s).match(/(-?\d{1,3}(?:[  .]\d{3})*,\d{2})\s*$/); if (!m) return null; let x = m[1].replace(/[  ]/g, ""); if (/,\d{1,2}$/.test(x)) x = x.replace(/\./g, "").replace(",", "."); return Math.round(parseFloat(x) * 100); };
+  let ttc = null; L.forEach(l => { if (/total|net [àa] payer|montant (total|d[ûu]|re[çc]u)|somme de|[àa] payer/i.test(l)) { const a = amt(l); if (a) ttc = a; } });
+  if (!ttc) { const all = L.map(amt).filter(x => x > 0); if (all.length) ttc = Math.max(...all); }
+  if (ttc) { inv.ttc = ttc; const tv = /t\.?v\.?a\.?\s*(20|10|5,5)\s*%/i.test(text) ? null : 0; if (tv === 0) { inv.ht = ttc; inv.tvaTot = 0; inv.tva = [{ taux: 0, base: ttc, montant: 0 }]; } (inv.warn ||= []).push("Montants lus sans centimes : vérifiez le total."); inv.conf = Math.max(inv.conf || 0, 60); }
+}
+(function () { if (typeof parseInvoiceText !== "function") return; const _p = parseInvoiceText; parseInvoiceText = function (text) { const inv = _p.apply(this, arguments); try { sdVendorFix(inv, text); sdAmtFix(inv, text); if (/quittance|loyer d.?habitation/i.test(String(text).slice(0, 800)) && !/t\.?v\.?a\.?\s*(20|10)/i.test(text) && inv.ttc) { inv.tva = [{ taux: 0, base: inv.ttc, montant: 0 }]; inv.ht = inv.ttc; inv.tvaTot = 0; } } catch (e) { } return inv; }; })();
+/* TVA qui ne porte que sur une partie de la base : la ligne est scindée (base taxable + part sans TVA) */
+function sdTvaSplit(it) { if (!it || it.statut === "comptabilisee" || (it.lignes || []).length !== 1) return false; const l = it.lignes[0]; if (l.manual || !l.tva || !l.ht) return false; const exp = Math.round(l.ht * l.taux / 10000); if (Math.abs(exp - l.tva) <= Math.max(3, l.ht * .002)) return false;
+  for (const r of [l.taux, 2000, 1000, 550, 210].filter((x, i, a) => x && a.indexOf(x) === i)) { const base = Math.round(l.tva * 10000 / r); if (base > 0 && base < l.ht && Math.abs(Math.round(base * r / 10000) - l.tva) <= 1) { const rest = l.ht - base; it.lignes = [Object.assign({}, l, { ht: base, taux: r, tva: l.tva }), Object.assign({}, l, { ht: rest, taux: 0, tva: 0, lib: l.lib || "Part sans TVA" })]; (it.hist ||= []).push({ at: new Date().toISOString(), by: "Speedix", a: "TVA " + (r / 100).toString().replace(".", ",") + " % sur " + eur(base) + " seulement ; " + eur(rest) + " sans TVA" }); return true; } }
+  return false; }
+(function () { const _a = sdApply; sdApply = function (it) { try { sdTvaSplit(it); } catch (e) { } const r = _a.apply(this, arguments);
+  try { const c = sdCat((it.nc || {}).cat); const noTvaTxt = !/t\.?\s?v\.?\s?a\b|taxe sur la valeur/i.test(String(it.text || "")); if (c && c.tx === 0 && it.sens !== "V" && it.statut !== "comptabilisee" && noTvaTxt && it.text) { it.lignes.forEach(l => { if (l.manual || !l.tva) return; l.ht = l.ht + l.tva; l.tva = 0; l.taux = 0; }); } } catch (e) { } return r; }; })();
+
+/* ============================================================================
+   IA : relit la pièce quand la reconnaissance n'est pas certaine et choisit la catégorie
+   ========================================================================== */
+async function sdIA(it) {
+  if (!it || it.ncIATried || it.statut !== "a_traiter" || it.ncOk) return; const nc = it.nc || {}; if (nc.cat !== "nc" && (nc.conf || 0) >= 90) return;
+  let sample = null; try { sample = typeof iainSample === "function" ? await iainSample() : null; } catch (e) { } if (!sample) return; if (typeof aboOK === "function" && !aboOK("ia")) return;
+  it.ncIATried = true; const sens = it.sens === "V" ? "V" : "A"; const C = sdCats().filter(c => !c.off && (c.sens || "A") === sens && c.id !== "nc");
+  const p = sdParty(it); const prompt = `Tu es expert-comptable français. Détermine la nature comptable de cette pièce (${sens === "V" ? "facture de vente" : "pièce d'achat ou de dépense"}). Lis le type de document (quittance, avis d'échéance, note d'honoraires, facture…), l'émetteur et les lignes.
+Catégories possibles (id : libellé, compte PCG) :
+${C.map(c => c.id + " : " + c.lib + " (" + c.compte + ")").join("\n")}
+Réponds UNIQUEMENT avec un objet JSON : {"cat":"id","confiance":0-100,"raison":"5 à 10 mots"}
+Émetteur lu : ${p.nom || "?"} · fichier : ${it.nom || ""} · total TTC : ${eur(inboxTotals(it).ttc)} €
+Texte de la pièce :
+${String(it.text || (it.inv && it.inv.ia && it.inv.ia.des) || "").slice(0, 6000)}`;
+  try { const j = await sample.json(prompt, { modelTier: "default" }); if (j && C.some(c => c.id === j.cat)) { it.ncIA = { cat: j.cat, conf: Math.max(0, Math.min(100, +j.confiance || 70)), why: String(j.raison || "").slice(0, 80) }; sdApply(it, false); sdPzSync(it); (it.hist ||= []).push({ at: new Date().toISOString(), by: "IA", a: "Nature confirmée par l'IA : " + sdCat(j.cat).lib }); xSave("inbox", it); if (UI.view === "pieces") render(); } } catch (e) { console.warn("IA nature", e); }
+}
+(function () { const _f = sdFix; sdFix = function (it) { const r = _f.apply(this, arguments); setTimeout(() => sdIA(it), 30); return r; };
+  if (typeof pzAutoFill === "function") { const _af = pzAutoFill; pzAutoFill = function (it) { const r = _af.apply(this, arguments); if (it && !it.ncIATried) setTimeout(() => sdIA(it), 60); return r; }; } })();
+
+/* ============================================================================
+   Comptabilisation en lot après vérification
+   ========================================================================== */
+function sdBatchPost(ids) { let n = 0; const ko = []; ids.forEach(id => { const it = sdIt(id); if (!it || it.statut !== "a_traiter") return;
+    if (!it.ncOk && (it.nc || {}).cat && it.nc.cat !== "nc") { it.ncOk = true; it.nc.why = ["validée en lot par " + sdWho()].concat(it.nc.why || []).slice(0, 4); sdLearnFrom(it); sdTouch(it, "Nature validée en lot"); }
+    const P = inboxCheck(it); if (P.length) { ko.push((pzTiersNom ? pzTiersNom(it) : it.piece) + " : " + P[0]); return; } if (inboxPost(it, true)) n++; });
+  toast(n + " pièce(s) comptabilisée(s)" + (ko.length ? " · " + ko.length + " non passée(s) (" + ko[0] + (ko.length > 1 ? "…" : "") + ")" : " ✓")); return { n, ko }; }
+Object.assign(ACT, {
+  sdValPostSel: () => { const f = UI.sub.sdm; confirmBox("Valider et comptabiliser", `${f.sel.length} pièce(s) sélectionnée(s) : leur catégorie est validée telle qu'affichée, puis elles sont comptabilisées. Celles qui ont encore un contrôle bloquant (TVA, total, date, tiers…) restent à vérifier.`, "Valider et comptabiliser", () => { sdBatchPost(f.sel); f.sel = []; render(); }); },
+  sdSelReady: () => { const f = UI.sub.sdm; f.sel = sdRows(f).filter(x => x.statut === "a_traiter" && !inboxCheck(x).filter(p => !/^Nature/.test(p)).length).map(x => x.id); render(); },
+  pzCk: (el, ev) => { if (ev) { ev.stopPropagation(); } const S0 = UI.pzSel ||= []; const id = el.dataset.id; UI.pzSel = S0.includes(id) ? S0.filter(x => x !== id) : S0.concat(id); render(); },
+  pzCkAll: () => { const L = pzQueue().filter(x => x.statut === "a_traiter").map(x => x.id); UI.pzSel = (UI.pzSel || []).length === L.length ? [] : L; render(); },
+  pzCkNone: () => { UI.pzSel = []; render(); },
+  pzCkPost: () => { const ids = (UI.pzSel || []).slice(); confirmBox("Valider et comptabiliser", `${ids.length} pièce(s) : la pré-saisie est validée telle qu'affichée puis comptabilisée. Les pièces avec un contrôle bloquant restent à traiter.`, "Valider et comptabiliser", () => { sdBatchPost(ids); UI.pzSel = []; render(); }); },
+  sdMode: el => { PZ().tab = el.dataset.v; render(); }
+});
+(function () {
+  const _m = sdMasse; sdMasse = function () { let h = _m.apply(this, arguments); const f = UI.sub.sdm || {};
+    h = h.replace('<button class="btn sm pri" data-act="sdPostSel">Comptabiliser</button>', '<button class="btn sm pri" data-act="sdValPostSel" title="Valide la catégorie affichée puis comptabilise">✓ Valider et comptabiliser</button><button class="btn sm" data-act="sdPostSel">Comptabiliser les prêtes</button>');
+    return h.replace('<button class="btn sm" data-act="sdManual"', '<button class="btn sm" data-act="sdSelReady" title="Sélectionne les pièces sans autre anomalie que la nature à confirmer">☑ Sélectionner les vérifiables</button><button class="btn sm" data-act="sdManual"'); };
+  const _v = VIEWS.pieces; VIEWS.pieces = function () { let h = _v.apply(this, arguments); if (!S || !ensureX()) return h; const st = PZ(); const sel = new Set(UI.pzSel || []);
+    let sp = ""; try { sp = curSpace(); } catch (e) { }
+    if (sp !== "saisie") h = h.replace(/(<div class="fin-k pz-k">)/, `<div class="seg sd-modes">${[["pieces", "Pièces à traiter"], ["tx", "Paiements en attente de facture"], ["masse", "⚡ Saisie en masse"]].map(([k, l]) => `<button class="${(st.tab || "pieces") === k ? "on" : ""}" data-act="sdMode" data-v="${k}">${l}</button>`).join("")}</div>$1`);
+    if (st.tab === "tx" || st.tab === "masse") return h;
+    h = h.replace(/<a class="pz-qi ([^"]*)" data-act="pzPick" data-id="([^"]+)">/g, (m, c, id) => { const it = sdIt(id); const ok = it && it.statut === "a_traiter"; return m + (ok ? `<input type="checkbox" class="pz-ck" data-act="pzCk" data-id="${id}" ${sel.has(id) ? "checked" : ""} title="Sélectionner pour comptabiliser en lot">` : `<span class="pz-ck0"></span>`); });
+    const bar = sel.size ? `<div class="pz-lot"><b>${sel.size} sélectionnée(s)</b><button class="btn sm pri" data-act="pzCkPost">✓ Valider et comptabiliser</button><button class="lnk small" data-act="pzCkNone">Annuler</button></div>` : `<div class="pz-lot0"><button class="lnk small" data-act="pzCkAll">☑ Tout sélectionner pour comptabiliser en lot</button></div>`;
+    return h.replace('<div class="pz-ql">', bar + '<div class="pz-ql">'); };
+  /* Comptabilité › Vue d'ensemble : la saisie y figure aussi */
+  try { const T = SPACES.jrn.tabs; if (!T.some(t => t[0] === "pieces")) T.splice(2, 0, ["pieces", "Saisie des pièces", () => { if (!PZ().tab) PZ().tab = "pieces"; }, () => UI.view === "pieces"]); } catch (e) { }
+  const _c = VIEWS.compta; if (typeof _c === "function") VIEWS.compta = function () { const h = _c.apply(this, arguments); if (!S || !ensureX()) return h; const A = XS.inbox.filter(x => /a_traiter|doublon/.test(x.statut)); const ready = A.filter(x => x.statut === "a_traiter" && !inboxCheck(x).length); const mt = A.reduce((a, x) => a + inboxTotals(x).ttc, 0); const done = XS.inbox.filter(x => x.statut === "comptabilisee" && (x.postedAt || "").slice(0, 7) === todayISO().slice(0, 7)).length;
+    const card = `<section class="sd-sum"><div class="sd-sum-h"><b>✍ Saisie des pièces</b><span class="sp"></span><button class="btn sm" data-act="sdMode2" data-v="pieces">Pièces à traiter</button><button class="btn sm" data-act="sdMode2" data-v="masse">⚡ Saisie en masse</button></div><div class="sd-sum-k">${[["À traiter", A.length, A.length ? "ko" : "ok"], ["Prêtes à comptabiliser", ready.length, ""], ["Montant en attente", eur0(mt), ""], ["Comptabilisées ce mois", done, "ok"]].map(([l, v, c]) => `<div><span>${l}</span><b class="mono ${c}">${v}</b></div>`).join("")}</div></section>`;
+    const i = h.indexOf('<div class="grid'); return i < 0 ? h + card : h.slice(0, i) + card + h.slice(i); };
+  ACT.sdMode2 = el => { PZ().tab = el.dataset.v; UI.space = "jrn"; go("pieces"); };
+  const st = document.createElement("style"); st.textContent = `.pz-ql .pz-qi{position:relative;padding-left:32px!important}.pz-ck{position:absolute;left:9px;top:50%;transform:translateY(-50%);margin:0;width:16px;height:16px;cursor:pointer;accent-color:#0F3D3E;z-index:1}.pz-ck0{display:none}
+.pz-lot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#0F3D3E;color:#fff;border-radius:10px;padding:6px 10px;margin:6px 8px}.pz-lot .btn.pri{background:#F5B700;color:#0F1B33;border-color:#F5B700}.pz-lot .lnk{color:#fff}.pz-lot0{padding:4px 12px}
+.sd-modes{margin:4px 0 10px}.sd-sum{border:1px solid var(--rule,#D2D9E6);border-radius:14px;background:#fff;padding:12px 14px;margin:0 0 14px}.sd-sum-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}.sd-sum-h .sp{flex:1}.sd-sum-k{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.sd-sum-k div{background:#F7F9FC;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}.sd-sum-k span{font-size:12px;color:#6B7690}.sd-sum-k b{font-size:18px}.sd-sum-k .ko{color:#C77700}.sd-sum-k .ok{color:#1F8A55}@media (max-width:800px){.sd-sum-k{grid-template-columns:1fr 1fr}}`; document.head.appendChild(st);
+})();
+
+/* « déclare avoir reçu » n'est pas un avoir : seul un vrai avoir (titre, n° d'avoir, note de crédit) inverse l'écriture */
+function sdIsAvoir(text, ttc) { const h = String(text || "").split(/\n/).slice(0, 8).join("\n"); return (ttc || 0) < 0 || /^\s*(facture d.?)?avoir\b|avoir\s*(n[°o]|num)|note de cr[ée]dit|credit note|facture rectificative/im.test(h); }
+(function () { const _p = parseInvoiceText; parseInvoiceText = function (text) { const inv = _p.apply(this, arguments); try { if (inv.type === "AV" && !sdIsAvoir(text, inv.ttc)) inv.type = "FA"; } catch (e) { } return inv; };
+  if (typeof pzAutoFill === "function") { const _af = pzAutoFill; pzAutoFill = function (it) { const r = _af.apply(this, arguments); try { if (it && it.inv && it.inv.type === "AV" && it.text && !sdIsAvoir(it.text, it.inv.ttc)) { it.inv.type = "FA"; it.auto = (it.auto || []).filter(x => !/^Avoir détecté/.test(x)); try { it.lib = pzAutoLib(it); } catch (e) { } xSave("inbox", it); } } catch (e) { } return r; }; } })();
