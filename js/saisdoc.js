@@ -424,3 +424,116 @@ document.addEventListener("drop", ev => { const c = ev.target.closest && ev.targ
 .sd-pk-f{border-top:1px solid #EEF1F6;padding:6px 12px}
 .sd-col{width:34px;height:28px;border:0;background:none;padding:0;cursor:pointer}.sd-off td{opacity:.5}
 @media (max-width:1000px){.sd-grid{grid-template-columns:1fr}.sd-tw{max-height:none}}`; document.head.appendChild(st); })();
+
+/* ============================================================================
+   Visionneuse de validation : le document à gauche, la pré-saisie à droite
+   (saisie en masse, import depuis la saisie des journaux), navigation pièce par pièce
+   ========================================================================== */
+UI.sdImg ||= {};
+async function sdLoadPv(it) { const C = UI.sdImg; if (C[it.id] && !C[it.id].err) return; C[it.id] = { loading: true };
+  try { if (it.source === "manuel") { C[it.id] = { none: true }; return; } const b = await inboxBytes(it); const head = latin1(b.subarray(0, 5));
+    if (head.startsWith("%PDF")) { const url = URL.createObjectURL(new Blob([b], { type: "application/pdf" })); let pages = [];
+      try { const lib = await ensurePdfJs(); const pdf = await lib.getDocument({ data: b.slice() }).promise; for (let p = 1; p <= Math.min(pdf.numPages, 6); p++) { const pg = await pdf.getPage(p); const vp = pg.getViewport({ scale: 1.6 }); const c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height; await pg.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise; pages.push(c.toDataURL("image/jpeg", .86)); } } catch (e) { pages = []; }
+      C[it.id] = { pages, url }; }
+    else if (/^\xFF\xD8|^\x89PNG|^RIFF|^GIF/.test(head) || (it.inv && it.inv.photo)) C[it.id] = { pages: [URL.createObjectURL(new Blob([b], { type: "image/jpeg" }))], url: URL.createObjectURL(new Blob([b])) };
+    else C[it.id] = { xml: utf8(b).slice(0, 30000) };
+  } catch (e) { C[it.id] = { err: e.message || String(e) }; }
+  if (UI.modal && UI.modal.type === "sdView") render(); }
+function sdPvHTML(it) { const P = UI.sdImg[it.id]; const z = UI.sdZoom || 100; const rot = UI.sdRot || 0;
+  if (!P || P.loading) { if (!P) setTimeout(() => sdLoadPv(it), 0); return `<div class="sdv-wait"><span class="sd-busy"><i></i>Chargement du document…</span></div>`; }
+  if (P.none) return `<div class="sdv-wait"><div style="font-size:34px">✍</div><b>Saisie manuelle</b><span class="small muted">Aucun document : joignez la pièce depuis l'écriture une fois comptabilisée.</span></div>`;
+  if (P.err) return `<div class="sdv-wait"><div style="font-size:34px">📄</div><b>Document indisponible</b><span class="small muted">${esc(P.err)}</span>${it.text ? `<pre class="sdv-txt">${esc(it.text)}</pre>` : ""}</div>`;
+  if (P.xml) return `<pre class="sdv-txt">${esc(P.xml)}</pre>`;
+  if (P.pages && P.pages.length) return `<div class="sdv-pages" style="transform:rotate(${rot}deg)">${P.pages.map((u, i) => `<img src="${u}" alt="Page ${i + 1}" style="width:${z}%">`).join("")}</div>`;
+  return `<div class="sdv-fw"><iframe class="sdv-frame" src="${P.url}#toolbar=0&view=FitH" title="Document"></iframe>${it.text ? `<details class="sdv-pv"><summary>Texte lu sur la pièce</summary><pre class="sdv-txt">${esc(it.text)}</pre></details>` : ""}</div>`; }
+function sdViewHTML(M) {
+  const ids = (M.q || []).filter(id => XS.inbox.some(x => x.id === id)); if (!ids.length) return modalFrame("Pièce", "Plus aucune pièce à afficher.", `<button class="btn" data-act="closeModal">Fermer</button>`);
+  M.i = Math.max(0, Math.min(M.i || 0, ids.length - 1)); M.q = ids; const it = XS.inbox.find(x => x.id === ids[M.i]); const lock = it.statut === "comptabilisee"; const dis = lock || it.statut === "supprimee" ? "disabled" : "";
+  const T = inboxTotals(it); const ck = lock ? { B: [], W: [] } : sdChecks(it); const P = lock ? [] : inboxCheck(it); const nc = it.nc || {}; const t = tiersBy(it.tiers); const party = sdParty(it); const l0 = it.lignes[0] || {}; const multi = it.lignes.length > 1;
+  const lines = it.lignes.map((l, i) => `<tr><td><input class="in mono acc sd-i" list="acc-list" value="${esc(l.compte)}" data-ch="sdL" data-id="${it.id}" data-i="${i}" data-f="compte" ${dis}><div class="small muted">${esc(accLib(l.compte))}</div></td><td><select class="in sd-i" data-ch="sdL" data-id="${it.id}" data-i="${i}" data-f="taux" ${dis}>${tauxOpts.concat([[850, "8,5 %"]]).map(([a, b]) => `<option value="${a}" ${Number(a) === Number(l.taux) ? "selected" : ""}>${b}</option>`).join("")}</select></td><td><input class="in sd-i num" value="${toIn(l.ht)}" data-ch="sdL" data-id="${it.id}" data-i="${i}" data-f="ht" ${dis}></td><td><input class="in sd-i num" value="${toIn(l.tva)}" data-ch="sdL" data-id="${it.id}" data-i="${i}" data-f="tva" ${dis}></td><td class="r mono">${eur((l.ht || 0) + (l.tva || 0))}</td></tr>`).join("");
+  let prev = []; try { prev = inboxEcriture(it).lignes; } catch (e) { }
+  const body = `<div class="sdv-body"><div class="sdv-l"><div class="sdv-bar"><b class="small">${esc(it.nom || "Document")}</b><span class="sp"></span><button class="btn sm ghost" data-act="sdZoom" data-v="-20" title="Réduire">－</button><span class="small mono">${UI.sdZoom || 100} %</span><button class="btn sm ghost" data-act="sdZoom" data-v="20" title="Agrandir">＋</button><button class="btn sm ghost" data-act="sdRot" title="Pivoter">⟳</button>${(UI.sdImg[it.id] || {}).url ? `<a class="btn sm ghost" href="${UI.sdImg[it.id].url}" target="_blank" rel="noopener" title="Ouvrir dans un nouvel onglet">↗</a>` : ""}</div><div class="sdv-doc">${sdPvHTML(it)}</div></div>
+    <div class="sdv-r"><div class="sdv-und"><div class="row" style="gap:8px;align-items:center"><span class="sd-sens ${it.sens === "V" ? "v" : "a"}">${it.sens === "V" ? "Facture client" : "Facture fournisseur"}</span>${lock ? '<span class="pill ok">✓ Comptabilisée</span>' : P.length ? `<span class="pill warn">À vérifier</span>` : '<span class="pill ok">Prête</span>'}<span class="sp"></span><span class="small muted">Lecture ${it.conf || 0} %</span></div>
+      <div class="sdv-cat"><span class="small muted">Catégorie</span>${sdChip(l0.cat || nc.cat, it.id)}<span class="sd-conf"><i style="width:${it.ncOk ? 100 : nc.conf || 0}%;background:${it.ncOk || (nc.conf || 0) >= 85 ? "#1F8A55" : (nc.conf || 0) >= 65 ? "#E0A800" : "#C2364B"}"></i></span><span class="small">${it.ncOk ? "✓ confirmée" : (nc.conf || 0) + " %"}</span></div>${(nc.why || []).length ? `<div class="small muted">Pourquoi : ${esc(nc.why.join(", "))}</div>` : ""}</div>
+      ${P.length ? `<div class="sdv-ko">${P.map(x => "• " + esc(x)).join("<br>")}</div>` : ""}${ck.W.length ? `<div class="sd-warn">${ck.W.map(x => "ⓘ " + esc(x)).join("<br>")}</div>` : ""}
+      <div class="sdv-g"><label class="f">${it.sens === "V" ? "Client" : "Fournisseur"}<input class="in" list="sdT-${it.sens === "V" ? "C" : "F"}" value="${esc(t ? t.nom : party.nom || "")}" data-ch="sdF" data-id="${it.id}" data-f="tiers" ${dis}></label><label class="f">N° de facture<input class="in mono" value="${esc(it.piece || "")}" data-ch="sdF" data-id="${it.id}" data-f="piece" ${dis}></label>
+        <label class="f">Date<input class="in" type="date" value="${esc(it.date || "")}" data-ch="sdF" data-id="${it.id}" data-f="date" ${dis}></label><label class="f">Échéance<input class="in" type="date" value="${esc(it.ech || "")}" data-ch="sdV" data-id="${it.id}" data-f="ech" ${dis}></label>
+        <label class="f" style="grid-column:1/-1">Libellé<input class="in" value="${esc(it.lib || "")}" data-ch="sdV" data-id="${it.id}" data-f="lib" ${dis}></label>
+        <label class="f">Journal<select class="in" data-ch="sdV" data-id="${it.id}" data-f="journal" ${dis}>${S.journaux.map(j => `<option value="${esc(j.code)}" ${j.code === it.journal ? "selected" : ""}>${esc(j.code)} · ${esc(j.lib)}</option>`).join("")}</select></label>
+        <label class="f">Type<select class="in" data-ch="sdV" data-id="${it.id}" data-f="type" ${dis}><option value="FA" ${it.inv.type !== "AV" ? "selected" : ""}>Facture</option><option value="AV" ${it.inv.type === "AV" ? "selected" : ""}>Avoir</option></select></label></div>
+      <table class="t sdv-t"><thead><tr><th>Compte</th><th>TVA</th><th class="r">HT</th><th class="r">TVA</th><th class="r">TTC</th></tr></thead><tbody>${lines}</tbody><tfoot><tr><td colspan="2">Total${it.inv.ttc ? ` <span class="small ${Math.abs(it.inv.ttc - T.ttc) > 2 ? "bad" : "ok"}">· lu sur la facture ${eur(it.inv.ttc)}</span>` : ""}</td><td class="r mono">${eur(T.ht)}</td><td class="r mono">${eur(T.tva)}</td><td class="r mono"><b>${eur(T.ttc)}</b></td></tr></tfoot></table>
+      ${lock ? "" : `<div class="row" style="gap:6px"><button class="btn sm ghost" data-act="sdLAdd" data-id="${it.id}">＋ Ventiler sur un autre compte</button>${multi ? `<button class="btn sm ghost" data-act="sdLDel" data-id="${it.id}">− Retirer la dernière ligne</button>` : ""}</div>`}
+      <details class="sdv-pv" ${lock ? "open" : ""}><summary>Écriture ${lock ? "passée" : "qui sera passée"} · journal ${esc(it.journal)}</summary><table class="t"><tbody>${prev.map(l => `<tr><td class="mono">${esc(l.compte)}${l.aux ? " · " + esc(l.aux) : ""}<div class="small muted">${esc(accLib(l.compte))}</div></td><td class="r mono">${l.debit ? eur(l.debit) : ""}</td><td class="r mono">${l.credit ? eur(l.credit) : ""}</td></tr>`).join("")}</tbody></table></details>
+      ${(it.hist || []).length ? `<details class="sdv-pv"><summary>Historique (${it.hist.length})</summary>${it.hist.slice().reverse().map(h => `<div class="small"><b>${esc(h.by)}</b> · ${new Date(h.at).toLocaleString("fr-FR")} · ${esc(h.a)}</div>`).join("")}</details>` : ""}
+    </div></div>${typeof accOptions === "function" ? accOptions() : ""}<datalist id="sdT-F">${S.tiers.filter(x => x.type === "F").map(x => `<option value="${esc(x.nom)}">`).join("")}</datalist><datalist id="sdT-C">${S.tiers.filter(x => x.type === "C").map(x => `<option value="${esc(x.nom)}">`).join("")}</datalist>${UI.sdPick ? sdPickHTML() : ""}`;
+  const foot = `<button class="btn" data-act="sdVNav" data-v="-1" ${M.i ? "" : "disabled"} title="Pièce précédente (Alt + ←)">◀</button><span class="small mono">${M.i + 1} / ${ids.length}</span><button class="btn" data-act="sdVNav" data-v="1" ${M.i < ids.length - 1 ? "" : "disabled"} title="Pièce suivante (Alt + →)">▶</button><span style="flex:1"></span>
+    ${lock ? `<button class="btn" data-act="viewEcr" data-id="${it.ecrId}">Voir l'écriture</button>` : `<button class="btn ghost" data-act="sdVDel">🗑 Corbeille</button><button class="btn ghost" data-act="sdVFull" title="Fenêtre complète : statut plateforme, lecture IA, contrepartie">Détail complet</button>${!it.ncOk && nc.cat !== "nc" ? `<button class="btn" data-act="sdOk" data-id="${it.id}">✓ Confirmer la nature</button>` : ""}<button class="btn pri" data-act="sdVPost" ${P.length ? "disabled" : ""} title="Ctrl + Entrée">Comptabiliser${ids.length > 1 ? " et suivante" : ""}</button>`}`;
+  return modalFrame((it.sens === "V" ? "Vérifier la facture client" : "Vérifier la facture fournisseur") + (it.piece ? " " + esc(it.piece) : ""), body, foot, true);
+}
+(function () { const _rm = renderModal; renderModal = function () { const M = UI.modal; if (M && M.type === "sdView") return sdViewHTML(M); return _rm.apply(this, arguments); }; })();
+function sdOpenView(ids, id) { UI.sdPick = null; openModal({ type: "sdView", q: ids, i: Math.max(0, ids.indexOf(id)) }); }
+Object.assign(ACT, {
+  sdView: el => { const f = UI.sub.sdm ||= { f: "tout", q: "", sel: [], cat: "" }; const ids = sdRows(f).map(x => x.id); if (!ids.includes(el.dataset.id)) ids.unshift(el.dataset.id); sdOpenView(ids, el.dataset.id); },
+  sdVNav: el => { const M = UI.modal; M.i = (M.i || 0) + Number(el.dataset.v); UI.sdPick = null; render(); },
+  sdZoom: el => { UI.sdZoom = Math.max(40, Math.min(250, (UI.sdZoom || 100) + Number(el.dataset.v))); render(); },
+  sdRot: () => { UI.sdRot = ((UI.sdRot || 0) + 90) % 360; render(); },
+  sdVFull: () => { const M = UI.modal; const id = M.q[M.i]; openModal({ type: "inboxItem", id, tab: "lecture" }); },
+  sdVDel: () => { const M = UI.modal; const it = sdIt(M.q[M.i]); if (!it) return; it.prevSt = it.statut; it.statut = "supprimee"; it.delAt = new Date().toISOString(); it.delBy = sdWho(); sdTouch(it, "Mise à la corbeille"); M.q = M.q.filter(x => x !== it.id); toast("Pièce mise à la corbeille · restauration possible."); if (!M.q.length) closeModal(); else render(); },
+  sdVPost: () => { const M = UI.modal; const it = sdIt(M.q[M.i]); if (!it) return; if (!inboxPost(it)) { render(); return; } const rest = M.q.filter(id => { const x = sdIt(id); return x && x.statut !== "comptabilisee"; }); if (!rest.length) { closeModal(); toast("Toutes les pièces sont comptabilisées ✓"); return; } const nx = M.q.slice(M.i + 1).find(id => rest.includes(id)) || rest[0]; M.q = rest; M.i = rest.indexOf(nx); render(); },
+  sdLAdd: el => { const it = sdIt(el.dataset.id); if (!it) return; const l0 = it.lignes[0] || {}; it.lignes.push({ compte: l0.compte || "", cat: l0.cat, lib: "", ht: 0, taux: l0.taux ?? 2000, tva: 0, manual: true }); sdTouch(it, "Ventilation ajoutée"); render(); },
+  sdLDel: el => { const it = sdIt(el.dataset.id); if (!it || it.lignes.length < 2) return; it.lignes.pop(); sdTouch(it, "Ventilation retirée"); render(); }
+});
+Object.assign(CHG, {
+  sdV: el => { const it = sdIt(el.dataset.id); if (!it || it.statut === "comptabilisee") return; const f = el.dataset.f; if (f === "type") { it.inv.type = el.value; sdTouch(it, el.value === "AV" ? "Marquée comme avoir" : "Marquée comme facture"); } else { it[f] = el.value; sdTouch(it, ({ ech: "Échéance", lib: "Libellé", journal: "Journal" })[f] + " : " + el.value); } render(); },
+  sdL: el => { const it = sdIt(el.dataset.id); if (!it || it.statut === "comptabilisee") return; const l = it.lignes[+el.dataset.i]; if (!l) return; const f = el.dataset.f;
+    if (f === "compte") { l.compte = pad6(el.value); l.manual = true; const k = sdCatByAcc(l.compte, it.sens === "V" ? "V" : "A"); if (k) l.cat = k.id; it.ncOk = true; }
+    else if (f === "taux") { l.taux = Number(el.value); l.tva = Math.round(l.ht * l.taux / 10000); } else if (f === "ht") { l.ht = cents(el.value); l.tva = Math.round(l.ht * l.taux / 10000); } else if (f === "tva") l.tva = cents(el.value);
+    sdTouch(it, "Ligne " + (+el.dataset.i + 1) + " : " + f + " " + el.value); render(); }
+});
+document.addEventListener("keydown", ev => { const M = UI.modal; if (!M || M.type !== "sdView") return; if (ev.altKey && (ev.key === "ArrowRight" || ev.key === "ArrowLeft")) { ev.preventDefault(); const n = (M.i || 0) + (ev.key === "ArrowRight" ? 1 : -1); if (n >= 0 && n < M.q.length) { M.i = n; render(); } } else if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") { ev.preventDefault(); ACT.sdVPost(); } });
+
+/* le 👁 de la saisie en masse ouvre la visionneuse ; « Corriger » aussi */
+(function () { const _m = sdMasse; sdMasse = function () { return _m.apply(this, arguments).replace(/data-act="inboxOpen" data-id="([^"]+)"/g, 'data-act="sdView" data-id="$1"'); }; })();
+
+/* ---------- Saisie des journaux (vue détaillée) : importer des PDF et voir la pièce de chaque écriture ---------- */
+async function sdJImport(files, journal) {
+  if (!files.length) return; for (let k = 0; k < 100 && !ensureX(); k++) await new Promise(r => setTimeout(r, 100));
+  const j = journalBy(journal) || {}; const kind = j.type === "VEN" ? "V" : "A"; const before = XS.inbox.length; await sdAddFiles(kind, files);
+  const added = XS.inbox.slice(before); added.forEach(it => { it.journal = journal; xSave("inbox", it); });
+  if (added.length) sdOpenView(added.map(x => x.id), added[0].id);
+}
+(function () {
+  if (typeof ecrBlock === "function") { const _eb = ecrBlock; ecrBlock = function (e) { const h = _eb.apply(this, arguments); const has = (e.docs || []).length || e.pj || e.inboxId; const lock = typeof isLocked === "function" && isLocked(e);
+    const btn = has ? `<button class="btn sm sd-pj" data-act="sdEDoc" data-id="${e.id}" title="Voir la pièce justificative">📎 Pièce${(e.docs || []).length + (e.pj ? 1 : 0) > 1 ? "s" : ""}</button>` : lock ? "" : `<label class="btn sm ghost sd-pj" title="Joindre la pièce justificative (PDF, photo)">📎 Joindre<input type="file" hidden accept=".pdf,image/*" data-ch="sdEAtt" data-id="${e.id}"></label>`;
+    return h.replace('<div class="row">', '<div class="row">' + btn); }; }
+  const _vs = VIEWS.saisie; VIEWS.saisie = function () { const h = _vs.apply(this, arguments); if (!S) return h; const st = UI.sub.saisie || {};
+    return h.replace('<button class="btn" data-act="reglement">', `<label class="btn" title="Importer des factures PDF, Factur-X ou photos : lues, pré-saisies et affichées à côté pour validation">⇪ Importer des PDF<input type="file" multiple hidden accept=".pdf,.xml,.zip,image/*,application/pdf" data-ch="sdJImp" data-j="${esc(st.journal || "")}"></label><button class="btn" data-act="reglement">`); };
+})();
+Object.assign(ACT, {
+  sdEDoc: el => { const e = E.find(x => x.id === el.dataset.id); if (!e) return; if (e.inboxId && ensureX() && XS.inbox.some(x => x.id === e.inboxId)) return sdOpenView([e.inboxId], e.inboxId); openModal({ type: "gDocs", e: e.id, mode: "open" }); setTimeout(() => { try { gPreview(e, 0); } catch (x) { } }, 50); }
+});
+Object.assign(CHG, {
+  sdJImp: async el => { const fs = [...el.files]; el.value = ""; await sdJImport(fs, el.dataset.j || (UI.sub.saisie || {}).journal || "AC"); },
+  sdEAtt: async el => { const e = E.find(x => x.id === el.dataset.id); const fs = [...el.files]; el.value = ""; if (!e || !fs.length) return; if (typeof gAttach === "function") return gAttach(e, fs); toast("Ajout de pièce indisponible."); }
+});
+/* la vue « Écriture » (consultation) propose aussi la pièce */
+(function () { const _rm = renderModal; renderModal = function () { const h = _rm.apply(this, arguments); const M = UI.modal; if (!M || M.type !== "viewEcr") return h; const e = E.find(x => x.id === M.id); if (!e || !((e.docs || []).length || e.pj || e.inboxId)) return h; return h.replace(/(<button class="btn[^"]*" data-act="closeModal"[^>]*>)/, `<button class="btn" data-act="sdEDoc" data-id="${e.id}">📎 Voir la pièce</button>$1`); }; })();
+(function () { const st = document.createElement("style"); st.textContent = `
+.modal:has(.sdv-body){width:min(1500px,97vw)!important;max-width:97vw;height:94vh;display:flex;flex-direction:column}.modal:has(.sdv-body)>.panel-b{flex:1;min-height:0;padding:0;overflow:hidden}
+.sdv-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(380px,.85fr);height:100%;min-height:0}
+.sdv-l{display:flex;flex-direction:column;min-height:0;background:#EEF1F5;border-right:1px solid var(--rule,#D2D9E6)}
+.sdv-bar{display:flex;align-items:center;gap:4px;padding:6px 10px;background:#fff;border-bottom:1px solid var(--rule,#D2D9E6)}.sdv-bar .sp{flex:1}
+.sdv-doc{flex:1;min-height:0;overflow:auto;padding:14px;display:flex;justify-content:center}
+.sdv-pages{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;transition:transform .2s}.sdv-pages img{max-width:none;box-shadow:0 4px 18px rgba(15,27,51,.18);background:#fff;border-radius:3px}
+.sdv-fw{width:100%;display:flex;flex-direction:column;gap:8px}.sdv-frame{width:100%;height:100%;min-height:72vh;border:0;background:#fff;border-radius:4px}
+.sdv-wait{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;color:#33405C;width:100%}
+.sdv-txt{white-space:pre-wrap;font-size:11.5px;background:#fff;border-radius:6px;padding:12px;width:100%;max-height:100%;overflow:auto;text-align:left}
+.sdv-r{overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.sdv-und{border:1px solid #DCE7E5;background:#F6FAF9;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}.sdv-und .sp{flex:1}
+.sdv-cat{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sdv-ko{font-size:12.5px;color:#8F1F31;background:#FDECEE;border-radius:8px;padding:7px 10px}
+.sdv-g{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sdv-g .f{font-size:12.5px}
+.sdv-t{font-size:12.5px}.sdv-t td{padding:4px}.sdv-t .sd-i.num{width:96px}.sdv-t .acc{width:110px}.sdv-t .ok{color:#1F8A55}.sdv-t .bad{color:#C2364B}
+.sdv-pv summary{cursor:pointer;font-weight:700;font-size:12.5px;color:#13585A;padding:4px 0}.sdv-pv table{font-size:12px}
+.sd-pj{margin-right:4px}body:has(.sdv-body) .ai-fab{display:none!important}body:has(.sdv-body) #toast{top:16px!important;bottom:auto!important}
+@media (max-width:900px){.sdv-body{grid-template-columns:1fr;grid-template-rows:45vh auto}.modal:has(.sdv-body){height:96vh}.modal:has(.sdv-body)>.panel-b{overflow:auto}}`; document.head.appendChild(st); })();
