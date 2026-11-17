@@ -26,7 +26,7 @@ class MiniPDF {
     const cat = add(null), pagesId = add(null), f1 = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"), f2 = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
     const xo = (this.imgs || []).length ? " /XObject << " + this.imgs.map((im, i) => "/Im" + i + " " + add(`<< /Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bin.length} >>\nstream\n${im.bin}\nendstream`) + " 0 R").join(" ") + " >>" : "";
     const kids = [];
-    for (const p of this.pages) { const content = p.join("\n"); const cid = add(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`); kids.push(add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${this.W} ${this.H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >>${xo} >> /Contents ${cid} 0 R >>`)); }
+    for (const p of this.pages) { const content = p.join("\n"); const cid = add(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`); kids.push(add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${this.W} ${this.H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >>${xo}${this.gsRes || ""} >> /Contents ${cid} 0 R >>`)); }
     let catX = "";
     if (this.attach && this.attach.length) { // pièces jointes intégrées (Factur-X) + métadonnées XMP
       const toBin = t => unescape(encodeURIComponent(t)); const md = "D:" + new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14) + "Z"; const specs = [];
