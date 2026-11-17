@@ -19,6 +19,6 @@
   document.addEventListener("keydown", e => { const el = e.target; if (!el || el.tagName !== "INPUT" || !/^bpx/.test(el.dataset.ch || "") || !el.closest(".main-in")) return;
     if (e.key === "Escape") { if (el.dataset.orig != null) { el.value = el.dataset.orig; } el.blur(); e.preventDefault(); return; }
     if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) { e.preventDefault(); const k = key(el); const parts = k.split("|"); const ni = String((+parts[2] || 0) + 1); const target = [...document.querySelectorAll(`[data-ch="${el.dataset.ch}"]`)].find(x => (x.dataset.k ?? "") === parts[1] && (x.dataset.i ?? "") === ni && (x.dataset.f ?? "") === parts[3] && (x.dataset.y ?? "") === parts[4]); if (target) target.focus(); else el.blur(); } }, true);
-  document.addEventListener("focusin", e => { const el = e.target; if (el && el.tagName === "INPUT" && /^bpx/.test(el.dataset.ch || "")) { el.dataset.orig = el.value; if (el.classList.contains("bpx-auto")) { try { el.select(); } catch (x) { } el._bpxJF = 1; } } });
+  document.addEventListener("focusin", e => { const el = e.target; if (el && el.tagName === "INPUT" && /^bpx/.test(el.dataset.ch || "")) { el.dataset.orig = el.value; if (el.classList.contains("num") || el.classList.contains("bpx-auto") || /^(eur|num)$/.test(el.dataset.t || "")) { try { el.select(); } catch (x) { } el._bpxJF = 1; } } });
   document.addEventListener("mouseup", e => { const el = e.target; if (el && el._bpxJF) { el._bpxJF = 0; if (el.value === el.dataset.orig) e.preventDefault(); } }, true);
 })();
