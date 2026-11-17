@@ -65,7 +65,7 @@ body.ws-on .hdr{background:color-mix(in oklab,#fff 92%,transparent)}
 .ws-tabs button:hover{color:#fff}.ws-tabs button.on{color:#fff;border-color:#F5B700}
 .ws-in{animation:wsIn .38s cubic-bezier(.2,.9,.3,1)}@keyframes wsIn{from{opacity:0;transform:translateY(-10px) scale(.985)}to{opacity:1;transform:none}}
 .main.ws-anim .main-in>*:not(.ws-bar){animation:wsFade .35s ease-out}@keyframes wsFade{from{opacity:0;transform:translateY(8px)}}
-body.ws-on .main-in>.sp-bar{display:none}
+
 .ws-pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-top:10px}.ws-pr{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--rule,#E3EBEA);border-radius:10px;padding:6px 10px;font-size:13px}.ws-pr select{width:auto}
 @media (max-width:760px){.ws-top{padding:12px}.ws-id b{font-size:18px}.ws-btn{display:none}.ws-back{max-width:none}}
 @media (prefers-reduced-motion:reduce){.ws-in,.main.ws-anim .main-in>*{animation:none}}`; document.head.appendChild(st); })();
