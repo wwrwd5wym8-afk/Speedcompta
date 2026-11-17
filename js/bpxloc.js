@@ -13,9 +13,9 @@ function bpxInvTTC(p, x) { const r = bpxInvRate(p, x) / 100; const m = Number(x.
 function bpxInvFromTTC(p, x) { if (x.ttc == null) return; const r = bpxInvRate(p, x) / 100; x.montant = x.tva ? Math.round(Number(x.ttc) / (1 + r)) : Number(x.ttc); }
 /* revenus de location -> lignes de chiffre d'affaires calculées */
 function bpxLocHT(l) { const t = (Number(l.tvaT ?? 20) || 0) / 100; const pr = Number(l.prix) || 0; return l.base === "ht" ? pr : Math.round(pr / (1 + t)); }
-function bpxLocAn(l) { const per = Number(l.nper ?? (BPX_PER[l.per || "j"] || BPX_PER.j)[1]) || 0; return Math.round(bpxLocHT(l) * per * (Number(l.occ ?? 100) || 0) / 100 * (Number(l.nb) || 1)); }
+function bpxLocAn(l) { const per = Number(l.nper ?? (BPX_PER[l.per || "j"] || BPX_PER.j)[1]) || 0; return BPX_R(bpxLocHT(l) * per * (Number(l.occ ?? 100) || 0) / 100 * (Number(l.nb) || 1)); }
 function bpxLocOptIn(p) { return !!(p.h && p.h.locOpt); }
-function bpxLocCa(p, all) { const n = p.n || 3; return (p.loc || []).filter(l => all || !l.opt || bpxLocOptIn(p)).map(l => { const an = Math.max(1, Number(l.an) || 1) - 1, a = bpxLocAn(l), g = Number(l.g) || 0, m0 = Math.min(12, Math.max(1, Number(l.m0) || 1)); const v = []; for (let y = 0; y < n; y++) v.push(y < an ? 0 : y === an ? Math.round(a * (13 - m0) / 12) : Math.round(a * Math.pow(1 + g / 100, y - an))); return { lib: (l.lib || "Location") + (l.opt ? " (optionnelle)" : ""), v, g, sect: "serv", loc: true, opt: !!l.opt }; }); }
+function bpxLocCa(p, all) { const n = p.n || 3; return (p.loc || []).filter(l => all || !l.opt || bpxLocOptIn(p)).map(l => { const an = Math.max(1, Number(l.an) || 1) - 1, a = bpxLocAn(l), g = Number(l.g) || 0, m0 = Math.min(12, Math.max(1, Number(l.m0) || 1)); const v = []; for (let y = 0; y < n; y++) v.push(y < an ? 0 : y === an ? BPX_R(a * (13 - m0) / 12) : BPX_R(a * Math.pow(1 + g / 100, y - an))); return { lib: (l.lib || "Location") + (l.opt ? " (optionnelle)" : ""), v, g, sect: "serv", loc: true, opt: !!l.opt }; }); }
 function bpxLocCost(p, l) { return (l.biens || []).reduce((s, i) => s + (Number((p.inv[i] || {}).montant) || 0), 0); }
 (function () { const _c = bpxCalc;
   const zero = l => l.opt ? Object.assign({}, l, { v: [0], pct: "", vo: null, g: 0, y: null }) : l;
