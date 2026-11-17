@@ -51,7 +51,7 @@ function gnHTML() { const N = UI.gne; if (!N) return ""; const T = gnTot(N); con
       <label class="f">N° de pièce<input class="in mono" id="gn2-piece" value="${esc(N.piece)}" data-ch="gnH" data-f="piece" placeholder="auto"></label>
       <label class="f">Échéance<input class="in" type="date" value="${esc(N.ech)}" data-ch="gnH" data-f="ech"></label>
       <label class="f gn-libh">Libellé<input class="in" id="gn2-lib" value="${esc(N.lib)}" data-ch="gnH" data-f="lib" placeholder="ex. Facture EDF mars"></label></div>
-    ${prev ? `<div class="gn-chips">${prev}</div>` : ""}
+    
     <table class="gn-t"><thead><tr><th style="width:30px"></th><th style="width:220px">Compte ou tiers</th><th>Libellé de ligne</th><th class="r" style="width:120px">Débit</th><th class="r" style="width:120px">Crédit</th><th style="width:76px"></th></tr></thead><tbody>
     ${N.lines.map((l, i) => { const r = gnRes(l.compte); const t = r.aux ? tiersBy(r.aux) : null; const lab = l.compte ? (t ? t.nom + " · " + r.compte : accLib(r.compte)) : ""; const ac = /^[267]/.test(r.compte) && (cents(l.d) || cents(l.c));
       return `<tr class="${l._tva ? "gn-tva" : ""}"><td class="gn-n">${i + 1}</td><td><input class="in mono gi-acc gn-acc" autocomplete="off" id="gn2-${i}-compte" value="${esc(l.compte)}" data-ch="gnL" data-i="${i}" data-f="compte" placeholder="401, EDF, 6061…"><div class="gn-lab">${esc(lab)}</div></td>
@@ -173,3 +173,29 @@ document.addEventListener("drop", ev => { const p = ev.target.closest && ev.targ
 .gn-f{display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid #EEF1F6;background:#fff}
 .ac-pop{z-index:60!important}body:has(.gn) .ai-fab{display:none!important}body:has(.gn) #toast{top:16px!important;bottom:auto!important}
 @media (max-width:900px){.gn-body{grid-template-columns:1fr}.gn-side{border-left:0;border-top:1px solid #EEF1F6;min-height:260px}.gn-hd{grid-template-columns:1fr 1fr}}`; document.head.appendChild(st); })();
+
+/* ============================================================================
+   Reconnaissance automatique à la saisie d'un compte (remplace les modèles de saisie)
+   - charge ou immobilisation (achats) / produit (ventes) + montant : la TVA est ajoutée
+     au taux habituel (catégorie, tiers, compte) et la ligne du tiers est ajustée au TTC
+   - compte de tiers saisi en premier : compte de charge / produit appris proposé
+   ========================================================================== */
+function gnRateFor(N, compte) { if (/^(616|627|6354|635|637|6411|645|658|6712|625[16]|654)/.test(compte)) return 0;
+  try { const c = sdCatByAcc(compte, gnTypeJ() === "VEN" ? "V" : "A"); if (c && c.tx === 0) return 0; } catch (e) { }
+  const tl = N.lines.map(l => gnRes(l.compte)).find(r => r.aux); const t = tl ? tiersBy(tl.aux) : null; if (t && t.taux != null && t.defaut === compte) return Number(t.taux);
+  const last = E.slice().reverse().find(e => e.journal === N.journal && e.lignes.some(l => l.compte === compte) && e.lignes.some(l => /^4456|^4457/.test(l.compte))); if (last) { const b = last.lignes.find(l => l.compte === compte), v = last.lignes.find(l => /^4456|^4457/.test(l.compte)); const base = b.debit + b.credit, tv = v.debit + v.credit; if (base) { const r = Math.round(tv / base * 10000); const k = [2000, 1000, 550, 210, 0].reduce((a, x) => Math.abs(x - r) < Math.abs(a - r) ? x : a, 2000); return k; } }
+  return /^625[67]/.test(compte) ? 1000 : 2000; }
+function gnAutoRec(N, i) { const jt = gnTypeJ(); if (jt !== "ACH" && jt !== "VEN") return; const l = N.lines[i]; if (!l || l._tva) return; const r = gnRes(l.compte); const vente = jt === "VEN";
+  const isBase = vente ? /^7/.test(r.compte) : /^[62]/.test(r.compte); const amt = cents(vente ? l.c : l.d); if (!isBase || !amt || N._auto) return;
+  const tx = gnRateFor(N, r.compte); const next = N.lines[i + 1];
+  if (next && next._tva) N.lines.splice(i + 1, 1);
+  if (tx) { const v = Math.round(amt * tx / 10000); const acc = vente ? (TVA_COLL[tx] || "445710") : (r.compte.startsWith("2") ? "445620" : "445660"); const t = gnLine({ compte: acc, lib: "TVA " + (TAUX_LIB[tx] || ""), _tva: true, _for: l.id }); if (vente) t.c = toIn(v); else t.d = toIn(v); N.lines.splice(i + 1, 0, t); }
+  /* ligne du tiers : ajustée au TTC total ; sinon créée vide pour choisir le tiers */
+  let tk = N.lines.findIndex(x => gnRes(x.compte).aux || /^4[01]/.test(gnRes(x.compte).compte)); const tot = N.lines.reduce((a, x, k) => k === tk ? a : a + cents(x.d) - cents(x.c), 0);
+  if (tk < 0) { const tl = gnLine({ compte: "", lib: N.lib }); N.lines = N.lines.filter((x, k) => x.compte || cents(x.d) || cents(x.c) || k <= i); N.lines.push(tl); tk = N.lines.length - 1; N._askT = tk; }
+  const T = N.lines[tk]; if (tot > 0) { T.c = toIn(tot); T.d = ""; } else { T.d = toIn(-tot); T.c = ""; }
+  if (!N.lines.some(x => !x.compte && !x.d && !x.c)) N.lines.push(gnLine()); }
+(function () { const _l = CHG.gnL; CHG.gnL = function (el) { const N = UI.gne; const i = +el.dataset.i; const f = el.dataset.f; const r = _l.apply(this, arguments); try { if (N && (f === "d" || f === "c" || f === "compte")) { gnAutoRec(N, i); if (f === "compte" && N._askT === i) delete N._askT; gnDraft(); const id = document.activeElement && document.activeElement.id; render(); if (N._askT != null) setTimeout(() => { const x = $("#gn2-" + N._askT + "-compte"); x && x.focus(); delete N._askT; }, 20); else if (id) setTimeout(() => { const x = document.getElementById(id); x && x.focus(); }, 0); } } catch (e) { console.warn(e); } return r; }; })();
+/* plus de bandeau de modèles dans la saisie du journal */
+(function () { const _v = VIEWS.grille; VIEWS.grille = function () { return _v.apply(this, arguments).replace(/<button[^>]*data-act="gTpl"[^>]*>[^<]*<\/button>/g, ""); };
+  const st = document.createElement("style"); st.textContent = `.gr-wrap .gr-tpl{display:none!important}`; document.head.appendChild(st); })();
