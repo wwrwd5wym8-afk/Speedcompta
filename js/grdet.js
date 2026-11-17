@@ -49,7 +49,7 @@ function grdHTML() { if (!grdOn()) return ""; const e = grdEntry(); const st = U
     <div class="grd-tabs">${tabs.map(([k, l]) => `<button class="${st.tab === k ? "on" : ""}" data-act="grdTab" data-v="${k}">${l}</button>`).join("")}</div><div class="grd-b">${body}</div></aside>`; }
 /* colonnes de la grille au choix */
 const GRD_COLS = [["Lettr.", "Lettrage"], ["Période du", "Période du"], ["Période au", "Période au"], ["Échéance", "Échéance"], ["Doc.", "Document"], ["Statut", "Statut"]];
-function grdHidden() { try { return JSON.parse(localStorage.getItem("sc:grCols") || "[]"); } catch (e) { return []; } }
+function grdHidden() { try { const v = localStorage.getItem("sc:grCols"); return v == null ? ["Période du", "Période au"] : JSON.parse(v); } catch (e) { return []; } }
 function grdApplyCols() { const tb = document.querySelector("#app table.gr"); if (!tb) return; const hid = grdHidden(); const ths = [...tb.querySelectorAll("thead th")]; const idx = ths.map((th, i) => hid.includes(th.textContent.trim()) ? i : -1).filter(i => i >= 0);
   const css = idx.map(i => `#app table.gr tr>:nth-child(${i + 1}){display:none}`).join(""); let s = document.getElementById("grdColCss"); if (!s) { s = document.createElement("style"); s.id = "grdColCss"; document.head.appendChild(s); } s.textContent = css; }
 function grdColsHTML() { if (!UI.grdCols) return ""; const hid = grdHidden(); return `<div class="sd-cx-bg" data-act="grdColsX"></div><div class="grd-cols" style="left:${UI.grdCols.x}px;top:${UI.grdCols.y}px"><div class="sd-cx-h">Colonnes affichées</div>${GRD_COLS.map(([k, l]) => `<label class="grd-ci"><input type="checkbox" data-ch="grdCol" data-k="${esc(k)}" ${hid.includes(k) ? "" : "checked"}> ${l}</label>`).join("")}<button class="lnk small" data-act="grdColsReset">Tout afficher</button></div>`; }
@@ -79,7 +79,7 @@ Object.assign(ACT, {
   grdComDel: el => { const e = grdEntry(); if (!e) return; e.comms = (e.comms || []).filter(c => c.id !== el.dataset.id); saveEcr(e); render(); },
   grdCols: el => { const r = el.getBoundingClientRect(); UI.grdCols = { x: Math.min(r.left, window.innerWidth - 240), y: r.bottom + 4 + window.scrollY }; render(); },
   grdColsX: () => { UI.grdCols = null; render(); },
-  grdColsReset: () => { try { localStorage.removeItem("sc:grCols"); } catch (e) { } UI.grdCols = null; render(); },
+  grdColsReset: () => { try { localStorage.setItem("sc:grCols", "[]"); } catch (e) { } UI.grdCols = null; render(); },
   grdCsv: () => { try { grdCsv(); } catch (e) { toast("Export impossible : " + (e.message || e)); } }
 });
 Object.assign(CHG, {
