@@ -199,3 +199,43 @@ function gnAutoRec(N, i) { const jt = gnTypeJ(); if (jt !== "ACH" && jt !== "VEN
 /* plus de bandeau de modèles dans la saisie du journal */
 (function () { const _v = VIEWS.grille; VIEWS.grille = function () { return _v.apply(this, arguments).replace(/<button[^>]*data-act="gTpl"[^>]*>[^<]*<\/button>/g, ""); };
   const st = document.createElement("style"); st.textContent = `.gr-wrap .gr-tpl{display:none!important}`; document.head.appendChild(st); })();
+
+/* ============================================================================
+   Volet de saisie : informations utiles en direct
+   - sous chaque compte : son solde actuel
+   - fiche du tiers : solde, factures non lettrées, échu, délai de paiement, dernière écriture
+   - contrôles avant enregistrement : équilibre, période ouverte, doublon possible,
+     justificatif, tiers présent, TVA cohérente
+   - échéance calculée depuis le délai de paiement du tiers
+   ========================================================================== */
+function gnSolde(r) { let s = 0; for (const { l } of flat()) { if (r.aux ? l.aux === r.aux : (l.compte === r.compte && !l.aux) || (!r.aux && l.compte === r.compte)) s += l.debit - l.credit; } return s; }
+function gnDup(N) { const T = gnTot(N); const tr = N.lines.map(l => gnRes(l.compte)).find(r => r.aux); return E.filter(e => e.id !== N.edit && ((N.piece && e.journal === N.journal && (e.piece || "").toUpperCase() === N.piece.toUpperCase() && N.piece.length > 2) || (tr && T.d && e.lignes.some(l => l.aux === tr.aux) && Math.abs(ecrTotals(e).d - T.d) <= 1 && Math.abs(new Date(e.date) - new Date(N.date)) < 62 * 864e5))).slice(0, 3); }
+function gnInfoHTML(N) { const T = gnTot(N); const jt = gnTypeJ(); const tr = N.lines.map(l => gnRes(l.compte)).find(r => r.aux); const t = tr ? tiersBy(tr.aux) : null; const out = [];
+  if (t) { let s = 0, nl = 0, echu = 0, last = ""; const today = todayISO(); for (const { e, l } of flat()) { if (l.aux !== t.code) continue; s += l.debit - l.credit; if (!l.lettre) { nl++; const d = e.ech || l.ech; if (d && d < today) echu += Math.abs(l.debit - l.credit); } if (e.date > last) last = e.date; }
+    out.push(`<div class="gn-card"><div class="gn-ch"><span class="gn-av">${esc((t.nom || "?").charAt(0))}</span><div><b>${esc(t.nom)}</b><div class="small muted">${t.type === "C" ? "Client" : "Fournisseur"} · ${esc(t.code)}${t.siren ? " · SIREN " + esc(t.siren) : ""}</div></div></div>
+      <div class="gn-kv"><span>Solde</span><b class="mono">${eur(Math.abs(s))} ${s > 0 ? "D" : s < 0 ? "C" : ""}</b><span>Non lettrées</span><b>${nl} ligne(s)</b><span>Échu</span><b class="mono ${echu ? "gn-red" : ""}">${eur(echu)}</b><span>Délai</span><b>${t.delai != null ? t.delai + " jours" : "—"}</b><span>Compte habituel</span><b class="mono">${esc(t.defaut || "—")}${t.defaut ? " " + esc(accLib(t.defaut)) : ""}</b><span>Dernière écriture</span><b>${last ? frDate(last) : "—"}</b>${t.iban ? `<span>IBAN</span><b class="mono small">${esc(t.iban)}</b>` : ""}</div></div>`); }
+  const C = []; const L = N.lines.filter(l => l.compte || cents(l.d) || cents(l.c)); const ok = (c, txt, w) => C.push(`<li class="${c ? "ok" : w ? "warn" : "ko"}">${c ? "✓" : w ? "!" : "✕"} ${txt}</li>`);
+  ok(!T.s && T.d > 0, T.s ? "Écart de " + eur(Math.abs(T.s)) + " €" : T.d ? "Écriture équilibrée" : "Montants à saisir");
+  const w = N.date ? canWriteAt(N.date) : "Date manquante"; ok(!w, w || "Période ouverte (" + frDate(N.date) + ")");
+  if (jt === "ACH" || jt === "VEN") ok(!!tr, tr ? "Tiers renseigné" : "Aucun " + (jt === "VEN" ? "client" : "fournisseur") + " : le compte collectif sera utilisé", true);
+  const base = L.filter(l => /^[67]|^2/.test(gnRes(l.compte).compte)).reduce((a, l) => a + cents(l.d) + cents(l.c), 0), tva = L.filter(l => /^445(6|7)/.test(gnRes(l.compte).compte)).reduce((a, l) => a + cents(l.d) + cents(l.c), 0);
+  if (base && tva) { const r = tva / base * 100; ok([20, 10, 5.5, 2.1].some(x => Math.abs(x - r) < .6) || r < 20.6, "TVA " + r.toFixed(1).replace(".", ",") + " % de la base", true); }
+  ok(N.docs.length > 0 || !!N.edit, N.docs.length ? N.docs.length + " justificatif(s) joint(s)" : "Aucun justificatif joint", true);
+  if (N.piece) ok(true, "Pièce " + esc(N.piece));
+  const D = gnDup(N); if (D.length) C.push(`<li class="warn">! Doublon possible : ${D.map(e => `<a class="lnk" data-act="viewEcr" data-id="${e.id}">${esc(e.journal)} ${esc(e.piece || "")} du ${frDate(e.date)} (${eur(ecrTotals(e).d)} €)</a>`).join(", ")}</li>`);
+  out.push(`<div class="gn-card"><b class="small">Contrôles</b><ul class="gn-ck">${C.join("")}</ul></div>`);
+  return `<div class="gn-info">${out.join("")}</div>`; }
+(function () {
+  const _h = gnHTML; gnHTML = function () { let h = _h.apply(this, arguments); const N = UI.gne; if (!N) return h;
+    try { h = h.replace('<aside class="gn-side">', '<aside class="gn-side">' + gnInfoHTML(N)); } catch (e) { }
+    /* solde du compte sous chaque ligne */
+    try { N.lines.forEach((l, i) => { if (!l.compte) return; const r = gnRes(l.compte); if (!r.compte) return; const s = gnSolde(r); h = h.replace(new RegExp('(id="gn2-' + i + '-compte"[^>]*><div class="gn-lab">)([^<]*)(</div>)'), (m, a, b, c) => a + b + (s ? ` <em class="gn-sl">· solde ${eur(Math.abs(s))} ${s > 0 ? "D" : "C"}</em>` : "") + c); }); } catch (e) { }
+    return h; };
+  /* échéance depuis le délai du tiers */
+  const _l = CHG.gnL; CHG.gnL = function (el) { const r = _l.apply(this, arguments); try { const N = UI.gne; if (N && el.dataset.f === "compte" && !N.ech && N.date) { const tr = gnRes(el.value); const t = tr.aux ? tiersBy(tr.aux) : null; if (t && t.delai) { const d = new Date(N.date + "T12:00:00"); d.setDate(d.getDate() + Number(t.delai)); N.ech = d.toISOString().slice(0, 10); render(); } } } catch (e) { } return r; };
+  const st = document.createElement("style"); st.textContent = `.gn-side{gap:10px;overflow:auto}.gn-info{display:flex;flex-direction:column;gap:10px}.gn-card{background:#fff;border:1px solid #E3E8F0;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.gn-ch{display:flex;gap:10px;align-items:center}.gn-av{width:34px;height:34px;border-radius:50%;background:#0F3D3E;color:#fff;display:grid;place-items:center;font-weight:800}
+.gn-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px}.gn-kv span{color:#6B7B7B}.gn-kv b{font-weight:600;overflow-wrap:anywhere}.gn-red{color:#C2364B}
+.gn-ck{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px}.gn-ck .ok{color:#1F6B44}.gn-ck .warn{color:#8A5A00}.gn-ck .ko{color:#C2364B}
+.gn-sl{font-style:normal;color:#8590A8;display:block}.gn-lab{white-space:normal!important;max-width:none!important}.gn-side .gn-drop{min-height:220px}`; document.head.appendChild(st);
+})();
