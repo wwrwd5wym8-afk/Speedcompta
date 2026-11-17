@@ -239,3 +239,11 @@ function gnInfoHTML(N) { const T = gnTot(N); const jt = gnTypeJ(); const tr = N.
 .gn-ck{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px}.gn-ck .ok{color:#1F6B44}.gn-ck .warn{color:#8A5A00}.gn-ck .ko{color:#C2364B}
 .gn-sl{font-style:normal;color:#8590A8;display:block}.gn-lab{white-space:normal!important;max-width:none!important}.gn-side .gn-drop{min-height:220px}`; document.head.appendChild(st);
 })();
+
+/* ---------- fluidité du volet : un seul affichage après chaque saisie, le curseur suit Tab / Entrée ---------- */
+(function () { const _l = CHG.gnL; CHG.gnL = function (el) { const f = el.dataset.f, i = +el.dataset.i; const R = render; let want = false; render = function () { want = true; };
+    try { _l.apply(this, arguments); } finally { render = R; }
+    clearTimeout(UI._gnT); UI._gnT = setTimeout(() => { let id = document.activeElement && document.activeElement.id; if (f === "compte" && el.value.trim() && (!id || id === "gn2-" + i + "-compte")) id = "gn2-" + i + "-lib"; if (typeof acClose === "function" && f === "compte") acClose(); render(); const x = id && document.getElementById(id); if (x) { x.focus(); try { if (x.select && /-(d|c|lib)$/.test(id) && !x.value) x.select(); } catch (e) { } } }, 0); };
+  /* Entrée dans un champ du volet : valide le champ puis passe au suivant (le compte choisi dans la liste passe au libellé) */
+  document.addEventListener("keydown", ev => { if (!UI.gne || ev.key !== "Tab") return; const t = ev.target; if (t && t.classList && t.classList.contains("gi-acc") && t.dataset.ch === "gnL" && typeof AC !== "undefined" && AC.box && t.value.trim()) { /* la liste choisit le compte ; le focus ira au libellé */ } }, true);
+})();
