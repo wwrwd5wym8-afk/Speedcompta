@@ -56,3 +56,20 @@ function wmOps(P, text, c) { const W = P.W, H = P.H; const diag = c.ang !== "hor
     const _d = CHG.pubD; CHG.pubD = el => { if (el.dataset.f === "wm" || el.dataset.f === "wmTxt") { const p = pubSt().list.find(x => x.id === pubUI().edit); if (!p) return; (p.disp ||= {})[el.dataset.f] = el.value; pubLog("Filigrane : " + el.value, p); if (el.dataset.f === "wm") render(); return; } return _d(el); }; }
 })();
 (function () { const st = document.createElement("style"); st.textContent = `.wm-h{font-size:13.5px;color:#0F3D3E;margin:12px 0 6px}.wm-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0 18px}.wm-r{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed #EEF3F2}.wm-r span{display:flex;flex-direction:column;font-size:13px}.wm-r small{color:#8A9C9B;font-size:11.5px}.wm-r select{width:auto;min-width:90px}.wm-r.off{opacity:.6}.wm-r.off b{font-size:12.5px;padding-right:10px}`; document.head.appendChild(st); })();
+/* ---- bouton « 💧 Filigrane » à côté des éditions et exports, dans tous les modules ---- */
+function wmCatView(v) { v = v || UI.view || ""; const g = typeof wsGroupOf === "function" ? wsGroupOf(v) : ""; if (/^liasse|^l20/.test(v)) return "liasse"; if (/^(tva|cvae|is|isAc|das2|fisc)/i.test(v)) return "fiscal"; if (/^(compAnn|pubs|juriApp)/.test(v)) return "annuels"; if (v === "pubSit") return "situation";
+  if (["finance", "audit", "juridique", "cdg", "gem", "pat", "pp", "conso", "fus", "subv"].includes(g) || /revis|dossierPerm|dp|budget|prev|bp|fin|rapp|flash|audit|cns/i.test(v)) return "rapports"; return "etats"; }
+function wmChipHTML() { const cat = wmCatView(); const c = wmCfg(); const t = wmText(cat); const lab = (WM_CATS.find(x => x[0] === cat) || ["", ""])[1];
+  return `<span class="wm-chip" title="Filigrane des éditions PDF de cette page (${esc(lab)})"><button class="btn sm ghost" data-act="wmMenu">💧 ${t ? esc(t) : "Sans filigrane"} <i>▾</i></button></span>`; }
+(function () {
+  const RX = /(^|\s)(pdf|exporter|export|éditer|édition|imprimer|télécharger)(\s|$)|⇩|🖨/i;
+  const _mar = modAfterRender; modAfterRender = function () { _mar.apply(this, arguments); try { const mi = document.querySelector(".main-in"); if (!mi || mi.querySelector(".wm-chip")) return;
+      const btns = [...mi.querySelectorAll("button.btn, a.btn")].filter(b => !b.closest("table,.modal,.pb-dd,.kx-menu,.wm-chip,.ws-bar,.sp-bar,nav,.pb-bar,.pb-tabs") && b.offsetParent && RX.test((b.textContent || "").trim()) && /pdf|export|édit|imprim|télécharg|⇩|🖨/i.test(b.textContent + " " + (b.title || "")));
+      const b = btns[0]; if (!b) return; b.insertAdjacentHTML("afterend", wmChipHTML()); } catch (e) { } };
+  ACT.wmMenu = el => { const cat = wmCatView(); const c = wmCfg(); const lab = (WM_CATS.find(x => x[0] === cat) || ["", ""])[1]; const r = el.getBoundingClientRect(); const cur = c.on && c.cats[cat] ? c.txt : "none";
+    const set = (txt) => () => { const k = wmCfg(); if (txt === "none") k.cats[cat] = 0; else { k.on = 1; k.cats[cat] = 1; k.txt = txt; } wmSave(k); toast(txt === "none" ? "Plus de filigrane sur : " + lab : "Filigrane « " + (txt === "auto" ? "automatique" : txt) + " » sur : " + lab); render(); };
+    const it = [{ h: "Filigrane des éditions · " + lab }].concat([["auto", "Automatique (PROVISOIRE si non clôturé)"], ["PROJET", "PROJET"], ["PROVISOIRE", "PROVISOIRE"], ["BROUILLON", "BROUILLON"], ["DOCUMENT DE TRAVAIL", "DOCUMENT DE TRAVAIL"], ["CONFIDENTIEL", "CONFIDENTIEL"], ["NON AUDITÉ", "NON AUDITÉ"], ["none", "Aucun filigrane ici"]].map(([v, l]) => ({ ic: cur === v ? "✓" : "", l, run: set(v) })))
+      .concat(["-", { ic: "👁", l: "Aperçu", run: () => ACT.wmTest() }, { ic: "⚙", l: "Tous les réglages du filigrane", run: () => go("params") }]);
+    if (typeof kxMenu === "function") kxMenu(r.left, r.bottom + 4, it, ""); };
+  const st = document.createElement("style"); st.textContent = `.wm-chip{display:inline-flex;margin-left:6px;vertical-align:middle}.wm-chip .btn{border:1px dashed #C9D6D5;color:#4B5B5A;font-weight:600}.wm-chip i{font-style:normal;font-size:9px;opacity:.7}`; document.head.appendChild(st);
+})();
