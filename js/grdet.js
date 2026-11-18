@@ -43,8 +43,8 @@ function grdTabHist(e) { if (typeof erhEvents !== "function") return `<div class
 function grdHTML() { if (!grdOn()) return ""; const e = grdEntry(); const st = UI.grdSt ||= { tab: "ecr", i: 0 };
   if (!e) return ""; if (false) return `<aside class="grd grd-min"><div class="grd-top"><b>Détails</b><button class="btn ghost sm" data-act="grdToggle" title="Masquer le panneau">✕</button></div><div class="grd-empty"><div style="font-size:30px">🧾</div>Cliquez sur une écriture pour voir ses lignes, son justificatif, ses commentaires et son historique.</div></aside>`;
   const nD = grdDocs(e).length, nC = (e.comms || []).length, nH = (e.hv || []).length + 1;
-  const tabs = [["ecr", "Écritures"], ["pj", "Justificatif" + (nD ? " (" + nD + ")" : "")], ["com", "Commentaires" + (nC ? " (" + nC + ")" : "")], ["hist", "Historique"]];
-  const body = st.tab === "pj" ? grdTabPj(e) : st.tab === "com" ? grdTabCom(e) : st.tab === "hist" ? grdTabHist(e) : grdTabEcr(e);
+  const rec = typeof letRecInfo === "function" ? letRecInfo(e) : null; const tabs = [["ecr", "Écritures"]].concat(rec ? [["rec", "Réconciliation" + (rec.ok ? " ✓" : "")]] : [], [["pj", "Justificatif" + (nD ? " (" + nD + ")" : "")], ["com", "Commentaires" + (nC ? " (" + nC + ")" : "")], ["hist", "Historique"]]);
+  const body = st.tab === "rec" && rec ? letRecHTML(e, 1) : st.tab === "pj" ? grdTabPj(e) : st.tab === "com" ? grdTabCom(e) : st.tab === "hist" ? grdTabHist(e) : grdTabEcr(e);
   return `<aside class="grd" id="grdPanel"><div class="grd-top"><b>Détails</b><span class="small muted mono">${esc(e.journal)} ${esc(e.piece || "")}</span><button class="btn ghost sm" data-act="grdToggle" title="Masquer le panneau (les détails restent accessibles par « ◧ Détails »)">✕</button></div>
     <div class="grd-tabs">${tabs.map(([k, l]) => `<button class="${st.tab === k ? "on" : ""}" data-act="grdTab" data-v="${k}">${l}</button>`).join("")}</div><div class="grd-b">${body}</div></aside>`; }
 /* colonnes de la grille au choix */

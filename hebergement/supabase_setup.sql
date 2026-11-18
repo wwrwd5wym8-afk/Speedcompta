@@ -244,3 +244,34 @@ create policy sc_pa_box_sel on public.sc_docs for select to authenticated using 
 create policy sc_pa_box_del on public.sc_docs for delete to authenticated using (
   path like 'pa/box/%' and public.sc_pa_owner(split_part(path, '/', 3)));
 grant insert on public.sc_docs to anon;
+
+-- ============================================================
+-- Réception par e-mail : une adresse privée par dossier (fonction « sc-mail-in »)
+-- mail/reg/<jeton> : inscription de l'adresse (propriétaires, expéditeurs autorisés)
+-- mail/box/<jeton>/<id> : e-mails reçus, déposés par la fonction serveur, lus et supprimés par le propriétaire
+-- ============================================================
+create or replace function public.sc_mail_owner(p_tok text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select auth.uid() is not null and (public.sc_is_editor() or exists (
+    select 1 from public.sc_docs a where a.path = 'mail/reg/' || p_tok and (a.data -> 'owners') ? auth.uid()::text));
+$$;
+grant execute on function public.sc_mail_owner(text) to authenticated;
+drop policy if exists sc_mail_reg_ins on public.sc_docs;
+drop policy if exists sc_mail_reg_sel on public.sc_docs;
+drop policy if exists sc_mail_reg_upd on public.sc_docs;
+drop policy if exists sc_mail_reg_del on public.sc_docs;
+drop policy if exists sc_mail_box_sel on public.sc_docs;
+drop policy if exists sc_mail_box_del on public.sc_docs;
+create policy sc_mail_reg_ins on public.sc_docs for insert to authenticated with check (
+  path ~ '^mail/reg/[a-z0-9]{10,40}$' and parent = 'mail/reg' and (data -> 'owners') ? auth.uid()::text);
+create policy sc_mail_reg_sel on public.sc_docs for select to authenticated using (
+  path ~ '^mail/reg/' and public.sc_mail_owner(split_part(path, '/', 3)));
+create policy sc_mail_reg_upd on public.sc_docs for update to authenticated using (
+  path ~ '^mail/reg/' and public.sc_mail_owner(split_part(path, '/', 3)))
+  with check (path ~ '^mail/reg/[a-z0-9]{10,40}$' and parent = 'mail/reg' and (data -> 'owners') ? auth.uid()::text);
+create policy sc_mail_reg_del on public.sc_docs for delete to authenticated using (
+  path ~ '^mail/reg/' and public.sc_mail_owner(split_part(path, '/', 3)));
+create policy sc_mail_box_sel on public.sc_docs for select to authenticated using (
+  path like 'mail/box/%' and public.sc_mail_owner(split_part(path, '/', 3)));
+create policy sc_mail_box_del on public.sc_docs for delete to authenticated using (
+  path like 'mail/box/%' and public.sc_mail_owner(split_part(path, '/', 3)));
