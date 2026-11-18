@@ -9,7 +9,7 @@
    ========================================================================== */
 const GRD_K = "sc:grDet";
 function grdOn() { try { return localStorage.getItem(GRD_K) !== "0"; } catch (e) { return true; } }
-function grdEntry() { if (UI.view !== "grille") return null; const g = gState(); return g.sel ? E.find(x => x.id === g.sel.e) || null : null; }
+function grdEntry() { const Mo = UI.modal; if (Mo && Mo.type === "gEd" && Mo.d && Mo.d.id) return E.find(x => x.id === Mo.d.id) || null; if (Mo && Mo.type === "viewEcr" && Mo.id) return E.find(x => x.id === Mo.id) || null; if (UI.view !== "grille") return null; const g = gState(); return g.sel ? E.find(x => x.id === g.sel.e) || null : null; }
 const grdWho = () => { try { return typeof bkWho === "function" ? bkWho() : "Utilisateur"; } catch (e) { return "Utilisateur"; } };
 /* sources de justificatifs d'une écriture */
 function grdDocs(e) { const D = []; const it = e.inboxId && typeof XS !== "undefined" && XS.inbox ? XS.inbox.find(x => x.id === e.inboxId) : null;
@@ -20,7 +20,7 @@ async function grdBytes(d) { if (d.k === "in") return inboxBytes(d.it); if (d.k 
 UI.grdPv ||= {};
 async function grdLoad(e, i) { const d = grdDocs(e)[i]; if (!d) return; const key = e.id + ":" + i; if (UI.grdPv[key]) return; UI.grdPv[key] = { loading: true };
   try { const b = await grdBytes(d); const head = latin1(b.subarray(0, 5)); const type = head.startsWith("%PDF") ? "application/pdf" : /^\x89PN/.test(head) ? "image/png" : /^\xFF\xD8/.test(head) ? "image/jpeg" : d.type || "application/octet-stream"; UI.grdPv[key] = { url: URL.createObjectURL(new Blob([b], { type })), pdf: type === "application/pdf", img: /^image\//.test(type), txt: !/^(application\/pdf|image\/)/.test(type) ? utf8(b).slice(0, 20000) : "" }; }
-  catch (err) { UI.grdPv[key] = { err: err.message || String(err) }; } if (UI.view === "grille") render(); }
+  catch (err) { UI.grdPv[key] = { err: err.message || String(err) }; } if (UI.view === "grille" || UI.modal) render(); }
 function grdTabEcr(e) { const t = ecrTotals(e); const lock = e.statut === "valide" || (typeof isLocked === "function" && isLocked(e));
   return `<div class="grd-h"><span class="grd-j">${esc(e.journal)}</span><span>${frDate(e.date)}</span><span class="mono">${esc(e.piece || "")}</span><span class="grd-st ${e.statut === "valide" ? "ok" : ""}">${e.statut === "valide" ? "Validée" + (e.num ? " · " + esc(e.num) : "") : "Brouillard"}</span></div>
     <div class="grd-lib">${esc(e.libelle || "—")}</div>
@@ -122,3 +122,13 @@ document.addEventListener("drop", ev => { const p = ev.target.closest && ev.targ
 /* « Voir doc. » de la grille : les fichiers liés depuis la GED s'affichent aussi */
 (function () { if (typeof gPreview !== "function") return; const _p = gPreview; gPreview = async function (e, i) { const d = (gDocs(e) || [])[i || 0]; if (!d || !d.ref || !d.ref.ged) return _p.apply(this, arguments); const box = $("#gDocPv"); if (!box) return; box.innerHTML = `<div class="empty">Chargement…</div>`;
   try { const b = await grdBytes({ k: "ged", ref: d.ref }); const pdf = latin1(b.subarray(0, 4)) === "%PDF"; const u = URL.createObjectURL(new Blob([b], { type: pdf ? "application/pdf" : d.type || "image/png" })); box.innerHTML = pdf ? `<iframe src="${u}#view=FitH" style="width:100%;height:65vh;border:0"></iframe>` : `<img src="${u}" style="max-width:100%">`; } catch (err) { box.innerHTML = `<p class="small">Aperçu indisponible : ${esc(err.message || err)}.</p>`; } }; })();
+
+/* même panneau de détails dans la fenêtre « Modifier l'écriture » (ouverte depuis la balance, le grand livre,
+   la révision…) : justificatif (y compris la facture reçue liée), réconciliation, commentaires, historique */
+function grdModalHTML(eId) { const e = E.find(x => x.id === eId); if (!e) return ""; if (e.inboxId && typeof ensureX === "function") { try { if (!ensureX()) setTimeout(() => { if (UI.modal) render(); }, 400); } catch (x) { } }
+  const st = UI.grdSt ||= { tab: "pj", i: 0 }; const D = grdDocs(e); const nC = (e.comms || []).length; const rec = typeof letRecInfo === "function" ? letRecInfo(e) : null;
+  if (!st.tab || st.tab === "ecr" || (st.tab === "rec" && !rec)) st.tab = D.length || !rec ? "pj" : "rec";
+  const tabs = [["pj", "Justificatif" + (D.length ? " (" + D.length + ")" : "")]].concat(rec ? [["rec", "Réconciliation" + (rec.ok ? " ✓" : "")]] : [], [["com", "Commentaires" + (nC ? " (" + nC + ")" : "")], ["hist", "Historique"]]);
+  const body = st.tab === "rec" && rec ? letRecHTML(e, 1) : st.tab === "com" ? grdTabCom(e) : st.tab === "hist" ? grdTabHist(e) : grdTabPj(e);
+  return `<div class="grd ge-det"><div class="grd-tabs">${tabs.map(([k, l]) => `<button class="${st.tab === k ? "on" : ""}" data-act="grdTab" data-v="${k}">${l}</button>`).join("")}</div><div class="grd-b">${body}</div></div>`; }
+(function () { const s = document.createElement("style"); s.textContent = `.ge-det{position:static!important;width:auto!important;max-height:none!important;height:auto!important;margin-top:14px;border:1px solid #E3EBEA;border-radius:12px;box-shadow:none!important}.ge-det .grd-b{max-height:520px;overflow:auto}.ge-det .grd-tabs{display:flex;gap:2px;border-bottom:1px solid #E3EBEA;padding:0 6px}`; document.head.appendChild(s); })();

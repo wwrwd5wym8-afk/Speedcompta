@@ -100,7 +100,7 @@ function grlMark() { const g = typeof gState === "function" ? gState() : {}; doc
   const st = document.createElement("style"); st.textContent = `
 body.gr-page .main-in{max-width:none!important}
 body.gr-page .gr-wrap{border-radius:12px}
-.gr-wrap .gr-grid{scroll-behavior:smooth;overscroll-behavior:contain}
+.gr-wrap .gr-grid{scroll-behavior:smooth;overscroll-behavior:auto}
 .gr-wrap table.gr{width:100%}
 .gr-wrap table.gr thead th{position:sticky;top:0;z-index:3;box-shadow:0 1px 0 #E2E8F0}
 .gr-wrap table.gr td{height:34px;transition:background-color .12s}

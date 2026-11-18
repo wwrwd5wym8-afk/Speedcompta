@@ -770,7 +770,7 @@ td.r .dp-bar{display:inline-block;width:50px;vertical-align:middle;margin-right:
 .crm-act>input[type=checkbox]{flex:none;width:18px;height:18px;margin:0}.crm-act>div{flex:1 1 auto;min-width:0}.crm-act>span,.crm-act>button{flex:none;width:auto!important;min-width:0!important}
 /* ---- Balances de révision : fluidité et lisibilité (forme inchangée) ---- */
 .br-wrap{overflow:clip}
-.br-scroll{scroll-behavior:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.br-scroll{scroll-behavior:auto;overscroll-behavior:auto;-webkit-overflow-scrolling:touch}
 .br-t thead th,.br-mv thead th{position:sticky;top:0;z-index:2;background:#F4F6FA;box-shadow:inset 0 -1px 0 #D9E0EA}
 .br-t td,.br-mv td,.br-t th{font-variant-numeric:tabular-nums}
 .br-r,.br-lr{cursor:pointer;transition:background-color .12s ease,box-shadow .12s ease}
