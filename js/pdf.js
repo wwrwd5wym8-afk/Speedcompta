@@ -38,7 +38,7 @@ class MiniPDF {
     let out = "%PDF-" + (this.attach ? "1.7" : "1.4") + "\n%\xE2\xE3\xCF\xD3\n"; const offs = [];
     objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
     const xref = out.length; out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, "0") + " 00000 n \n").join("");
-    out += `trailer\n<< /Size ${objs.length + 1} /Root ${cat} 0 R /Info << /Producer (SpeedCompta) /Title (${this.enc(this.title || "Speedix")}) >> /ID [<${this.fid || "53504545444350"}> <${this.fid || "53504545444350"}>] >>\nstartxref\n${xref}\n%%EOF`;
+    out += `trailer\n<< /Size ${objs.length + 1} /Root ${cat} 0 R /Info << /Producer (${typeof mentCfg === "function" && !mentCfg().brand ? "" : "SpeedCompta"}) /Title (${this.enc(this.title || (typeof mentCfg === "function" && !mentCfg().brand ? "Document" : "Speedix"))}) >> /ID [<${this.fid || "53504545444350"}> <${this.fid || "53504545444350"}>] >>\nstartxref\n${xref}\n%%EOF`;
     const bytes = new Uint8Array(out.length); for (let i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 255; return bytes;
   }
 }

@@ -5,15 +5,18 @@
    Les dates comptables (« au 31/12/2026 », « du … au … ») et les dates de signature
    (« Fait à …, le … », « A …, le … ») ne sont jamais touchées.
    ========================================================================== */
-function mentCfg() { let o = {}; try { o = JSON.parse(localStorage.getItem("sc:ment") || "{}") || {}; } catch (e) { } return { brand: o.brand !== "0", date: o.date !== "0" }; }
+function mentCfg() { let o = {}; try { o = JSON.parse(localStorage.getItem("sc:ment") || "{}") || {}; } catch (e) { } return { brand: o.brand === "1", date: o.date === "1" }; } /* par défaut : mention du logiciel et date d'édition masquées */
 function mentSet(k, v) { const o = Object.assign({}, (() => { try { return JSON.parse(localStorage.getItem("sc:ment") || "{}") || {}; } catch (e) { return {}; } })(), { [k]: v }); try { localStorage.setItem("sc:ment", JSON.stringify(o)); } catch (e) { } }
 function mentClean(s) { if (typeof s !== "string" || !s) return s; const c = mentCfg(); if (c.brand && c.date) return s;
   if (/^\s*(A|À|Fait à)\s/.test(s)) return s; /* date de signature */
   const names = ["Speedix", "SpeedCompta", "Speed ?X"]; try { const b = typeof brNom === "function" ? brNom() : ""; if (b) names.push(b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")); } catch (e) { }
   const BR = "(?:le logiciel\\s+)?(?:" + names.join("|") + ")"; let t = s;
-  if (!/avec\s/i.test(t) && !/\ble\s+\d{2}\/\d{2}\/\d{4}/i.test(t)) return s;
+  if (!/avec\s/i.test(t) && !/\d{2}\/\d{2}\/\d{4}/.test(t) && !new RegExp("^\\s*(" + names.join("|") + ")\\s*$", "i").test(t)) return s;
+  if (!c.brand && new RegExp("^\\s*(" + names.join("|") + ")\\s*$", "i").test(t)) return "";
   if (!c.brand) { t = t.replace(new RegExp("\\s*avec\\s+" + BR + "\\b", "gi"), ""); t = t.replace(/^Prévisions réalisées\s*(·|-)\s*/i, "").replace(/^Prévisions réalisées\.?$/i, ""); }
-  if (!c.date) { t = t.replace(/,?\s*\b[Ll]e\s+\d{2}\/\d{2}\/\d{4}/g, ""); t = t.replace(/\s*(·|-)\s*(édité|imprimé|généré)\s*\.?$/i, ""); }
+  if (!c.date) { const td = (typeof frDate === "function" && typeof todayISO === "function") ? frDate(todayISO()) : ""; const esc2 = v => v.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+    if (td) { t = t.replace(new RegExp(",?\\s*\\b[Ll]e\\s+" + esc2(td), "g"), ""); } /* seule la date d'édition (celle du jour) : jamais les dates d'exercice, de facture ou de signature */
+    t = t.replace(/\s*(·|-)\s*(édité|imprimé|généré)\s*\.?$/i, ""); }
   t = t.replace(/\s*[-–,]?\s*(établi[es]{0,2}|réalisé[es]{0,2}|généré[es]{0,2}|édité[es]{0,2})\s*\.?\s*$/i, (m) => /^(Document|Dossier)/i.test(t) ? m : "");
   t = t.replace(/\s+\./g, ".").replace(/\s{2,}/g, " ").trim();
   if (/^(Document|Prévisions|Copie)?\s*(établi[es]{0,2}|réalisé[es]{0,2})?\.?$/i.test(t)) return "";
