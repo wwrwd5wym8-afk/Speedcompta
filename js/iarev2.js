@@ -90,7 +90,7 @@ function iaExtra(r, C, add) {
   /* ---- classe 6 : charges ---- */
   if (/^6/.test(k) && s > 0) {
     const fines = lines.filter(({ e, l }) => l.debit && /amende|p\.?v\.?|contravention|p[ée]nalit[ée]|majoration/i.test(l.lib || e.libelle || "")); if (fines.length && !/^(6712|6582|6713)/.test(k)) add("warn", fines.length + " amende(s) ou pénalité(s) en charges déductibles : reclasser en 6712 et réintégrer fiscalement.", "od");
-    if (/^6257/.test(k) && X.ca > 0 && s > X.ca * 0.02) add("warn", "Frais de réception supérieurs à 2 % du chiffre d'affaires : justificatifs et relevé des frais généraux (art. 223 quater du CGI) à prévoir.", "note");
+    if (/^6257/.test(k) && X.ca > 0 && s > X.ca * 0.02) add("warn", "Frais de réception supérieurs à 2 % du chiffre d'affaires : justificatifs et relevé de frais généraux n° 2067-SD (art. 54 quater du CGI) à prévoir.", "note");
     if (/^661/.test(k) && !X.sum("164", "165", "166", "167", "168") && !X.sum("519") && !X.mvSum("512") ) add("warn", "Intérêts sans emprunt ni découvert au bilan : erreur de compte ?", "od");
     if (/^6811/.test(k) && !Object.keys(C.amort).length && !X.sum("28")) add("warn", "Dotations aux amortissements sans amortissements au bilan.", "od");
     if (/^695/.test(k) && !C.isIS) add("bad", "Impôt sur les sociétés comptabilisé dans une entreprise à l'impôt sur le revenu.", "od");
