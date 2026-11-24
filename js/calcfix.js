@@ -1,0 +1,91 @@
+/* ============================================================================
+   Fiabilité des calculs des comptes annuels
+   1. Soldes d'ouverture : si un exercice n'a pas encore d'à-nouveaux (exercice précédent non clôturé),
+      les soldes des comptes de bilan des exercices antérieurs sont repris automatiquement (et le résultat
+      antérieur en report à nouveau) ; dès que les à-nouveaux existent, eux seuls sont utilisés (jamais les deux).
+   2. « Contrôle des calculs » (Clôture et Comptes annuels) : chaque montant de l'annexe et des états est
+      recalculé et rapproché du bilan, du compte de résultat, des registres (immobilisations, emprunts)
+      et de l'exercice précédent. Écart = anomalie signalée avec le montant et l'endroit à corriger.
+   ========================================================================== */
+function ctlCfg() { return Object.assign({ on: 1, virt: 1, ran: 1, ed: 1 }, S.ctlCfg || {}); }
+function exHasAN(ex) { return E.some(e => e.journal === "AN" && e.date >= ex.debut && e.date <= ex.fin); }
+/* ---------- 1. soldes d'ouverture automatiques ---------- */
+(function () {
+  const raw = soldeMap; const cache = { v: -1, s: null, m: new Map() };
+  const virt = from => { if (!ctlCfg().virt) return null; const ex = (S.exercices || []).find(x => x.debut === from); if (!ex || exHasAN(ex)) return null;
+    if (cache.v !== DATA_V || cache.s !== S) { cache.v = DATA_V; cache.s = S; cache.m = new Map(); } if (cache.m.has(from)) return cache.m.get(from);
+    const o = {}; let res = 0, n = 0; for (const e of E) { if (e.date >= from) continue; for (const l of e.lignes) { const s = (l.debit || 0) - (l.credit || 0); if (!s) continue; n++; if (l.compte[0] === "6" || l.compte[0] === "7") res += s; else if ("12345".includes(l.compte[0])) o[l.compte] = (o[l.compte] || 0) + s; } }
+    if (res) o["110000"] = (o["110000"] || 0) + res; const r = n ? o : null; cache.m.set(from, r); return r; };
+  soldeMap = function (from, to) { const m = raw.apply(this, arguments); let v = null; try { v = from ? virt(from) : null; } catch (e) { } if (!v) return m; const rd = typeof ARR !== "undefined" && ARR.on;
+    const o = Object.assign({}, m); for (const c in v) { const x = (o[c] || 0) + (rd ? Math.round(v[c] / 100) * 100 : v[c]); if (x) o[c] = x; else delete o[c]; } return o; };
+})();
+/* ---------- 2. contrôle des calculs ---------- */
+function ctlRun(ex) { ex = ex || exCur(); const L = []; const add = (g, lib, a, b, det, lvl) => { const ok = Math.abs((a || 0) - (b || 0)) < 1; L.push({ g, lib, a, b, ok, det: ok ? "" : det || "", lvl: ok ? "ok" : lvl || "bad" }); };
+  const run = () => { const b = bilan(ex), c = compteResultat(ex.debut, ex.fin), m = soldeMap(ex.debut, ex.fin), pv = prevEx(ex);
+    const sumK = (ks, f) => ks.reduce((a, k) => a + b.get(k)[f], 0); const IK = IMMO_GRP.flatMap(g => g[1]);
+    /* états financiers */
+    add("États financiers", "Bilan équilibré : total actif = total passif", b.totA, b.totP, "Écart entre l'actif et le passif : vérifiez les comptes non classés et les écritures déséquilibrées.");
+    add("États financiers", "Résultat du bilan = résultat du compte de résultat", b.get("P_res").val, c.RN, "Le résultat présenté au passif ne correspond pas au compte de résultat.");
+    add("États financiers", "Compte de résultat = solde des comptes 6 et 7", c.RN, -sumPref(m, ["6", "7"]), "Un compte de charges ou de produits n'est pas classé dans le compte de résultat.");
+    const sig = c.sig.EBE + c.v("P_rep") + c.v("P_apr") + c.v("P_coti") + c.v("P_gen") + c.v("P_ufd") - c.v("C_dam") - c.v("C_dpr") - c.v("C_ach") - c.v("C_rfd");
+    add("États financiers", "Soldes intermédiaires de gestion : EBE → résultat d'exploitation", sig, c.RE, "Les SIG ne reconstituent pas le résultat d'exploitation.");
+    if (b.unalloc) L.push({ g: "États financiers", lib: "Affectation du résultat de l'exercice précédent", a: b.unalloc, b: 0, ok: false, lvl: "warn", det: "Le compte 12 contient encore " + eur0(b.unalloc) + " d'un exercice antérieur : il est présenté en report à nouveau et non en résultat de l'exercice. Comptabilisez l'affectation décidée par l'assemblée (Juridique › Affectation du résultat)." });
+    /* à-nouveaux */
+    if (pv) { const mp = soldeMap(pv.debut, pv.fin); const an = {}; let hasAN = false; for (const { e, l } of flat({ from: ex.debut, to: ex.fin, journal: "AN" })) { hasAN = true; const k = l.compte[0]; an[k] = (an[k] || 0) + l.debit - l.credit; }
+      if (hasAN) { const resP = -sumPref(mp, ["6", "7"]); ["2", "3", "4", "5"].forEach(k => add("À-nouveaux", "Classe " + k + " : à-nouveaux = soldes de clôture " + pv.fin.slice(0, 4), an[k] || 0, sumPref(mp, [k]), "Les à-nouveaux ne reprennent pas exactement les soldes de clôture de l'exercice précédent (écriture d'à-nouveaux à régénérer depuis la Clôture).", "bad"));
+        add("À-nouveaux", "Classe 1 : capitaux et résultat " + pv.fin.slice(0, 4) + " repris", an["1"] || 0, sumPref(mp, ["1"]) - resP, "Capitaux propres ou résultat de l'exercice précédent mal repris dans les à-nouveaux.", "bad"); }
+      else L.push({ g: "À-nouveaux", lib: "Soldes d'ouverture", ok: true, lvl: "info", det: ctlCfg().virt ? "Pas encore d'à-nouveaux : les soldes de l'exercice " + pv.fin.slice(0, 4) + " sont repris automatiquement (une seule fois)." : "Pas d'à-nouveaux et reprise automatique désactivée : le bilan ne contient pas les soldes d'ouverture." }); }
+    /* immobilisations et amortissements (annexe) */
+    const im = cqMv(ex, bilRe(IK, /^2[0-7]/), 1), am = cqMv(ex, bilRe(IK, /^28/), -1), dp = cqMv(ex, /^29/, -1);
+    add("Annexe · immobilisations", "Valeur brute de fin = actif brut du bilan", im[3], sumK(IK, "brut"), "Le tableau des immobilisations ne correspond pas au bilan.");
+    add("Annexe · immobilisations", "Début + augmentations − diminutions = fin", im[0] + im[1] - im[2], im[3], "Les mouvements du tableau ne s'additionnent pas.");
+    add("Annexe · amortissements", "Amortissements de fin + dépréciations = colonne amortissements du bilan", am[3] + dp[3], sumK(IK, "am"), "Le tableau des amortissements ne correspond pas au bilan.");
+    add("Annexe · amortissements", "Début + dotations − reprises = fin", am[0] + am[1] - am[2], am[3], "Les mouvements du tableau ne s'additionnent pas.");
+    if (pv) { const bp = bilan(pv); add("Annexe · immobilisations", "Valeur brute de début = valeur brute de fin " + pv.fin.slice(0, 4), im[0], IK.reduce((a, k) => a + bp.get(k).brut, 0), "Le début d'exercice ne reprend pas la clôture précédente (double comptage ou à-nouveaux incomplets).");
+      add("Annexe · amortissements", "Amortissements de début = amortissements de fin " + pv.fin.slice(0, 4), am[0] + dp[0], IK.reduce((a, k) => a + bp.get(k).am, 0), "Le début d'exercice ne reprend pas la clôture précédente."); }
+    const dot = sumPref(m, ["6811"]); add("Annexe · amortissements", "Dotations du tableau = dotations comptabilisées (6811)", am[1], dot, "Dotations passées sur un autre compte (6871 exceptionnel…) ou amortissements augmentés par une autre écriture.", "warn");
+    const D = immoDet(ex); if (D.length) { const nc = D.filter(d => !d.cede); add("Registre des immobilisations", "Dotations du plan d'amortissement = dotations comptabilisées", D.reduce((a, d) => a + d.dot, 0), dot, "Les dotations de l'exercice n'ont pas été générées ou ont été modifiées (Immobilisations › Générer les dotations).", "warn");
+      add("Registre des immobilisations", "Valeurs d'origine du registre = immobilisations amortissables au bilan", nc.reduce((a, d) => a + d.vo, 0), sumPref(m, ["20", "21"], ["206", "207", "211", "212"]), "Un bien est au bilan sans fiche dans le registre (ou l'inverse) : le détail par bien de l'annexe sera incomplet.", "warn");
+      add("Registre des immobilisations", "Amortissements cumulés du registre = comptes 28", nc.reduce((a, d) => a + d.fin, 0), -sumPref(m, ["280", "281"]), "Écart entre le plan d'amortissement et les comptes d'amortissement.", "warn"); }
+    /* provisions et stocks */
+    const pr = cqMv(ex, /^15/, -1), rg = cqMv(ex, /^14/, -1); add("Annexe · provisions", "Provisions pour risques et charges = bilan", pr[3], b.get("P_prov").val, "Le tableau des provisions ne correspond pas au bilan."); add("Annexe · provisions", "Provisions réglementées = bilan", rg[3], b.get("P_preg").val, "Le tableau des provisions ne correspond pas au bilan.");
+    const st = cqMv(ex, /^3[0-7]/, 1); add("Annexe · stocks", "Stocks à la clôture = bilan", st[3], sumK(["A_smp", "A_sec", "A_spf", "A_sm"], "brut"), "La variation des stocks ne correspond pas au bilan.");
+    /* créances, dettes, emprunts */
+    const e = echeances(ex); const DK = PASSIF[3][1].map(x => x[0]); add("Annexe · dettes (état des échéances)", "Total des dettes = dettes du bilan", e.det.reduce((a, r) => a + r[1] + r[2], 0), sumK(DK, "val"), "L'état des dettes ne reprend pas tous les postes du bilan.");
+    add("Annexe · dettes (état des échéances)", "Emprunts : à 1 an au plus + à plus d'1 an = bilan", e.det.filter(r => /établissements de crédit/.test(r[0])).reduce((a, r) => a + r[1] + r[2], 0), b.get("P_ecr").val, "Ventilation des emprunts incorrecte.");
+    add("Annexe · créances", "Total des créances = créances brutes du bilan", e.cre.reduce((a, r) => a + r[1], 0), sumK(["A_avv", "A_cli", "A_acre", "A_cca"], "brut"), "L'état des créances ne reprend pas tous les postes du bilan.");
+    const EL = (typeof emprunts === "function" ? emprunts() : []).filter(p => String(p.compte || "").startsWith("164") && p.debut && p.debut <= ex.fin);
+    if (EL.length) { const X = EL.map(p => empExo(p, ex)); add("Emprunts", "Capital restant dû des tableaux = solde des comptes 164", X.reduce((a, x) => a + x.crdFin, 0), -sumPref(m, ["164"], ["1648"]), "Échéances non comptabilisées, en double, ou emprunt absent du registre (Comptabilité › Emprunts).", "warn");
+      add("Emprunts", "Capital remboursé des tableaux = remboursements comptabilisés", X.reduce((a, x) => a + x.cap, 0), (() => { let t = 0; for (const { l } of flat({ from: ex.debut, to: ex.fin, noAN: true })) if (EL.some(p => p.compte === l.compte)) t += l.debit; return t; })(), "Une échéance manque ou est passée deux fois.", "warn");
+      add("Emprunts", "Intérêts courus des tableaux = comptes 1688 / 1648", X.reduce((a, x) => a + x.icne, 0), -sumPref(m, ["1688", "1648"]), "Intérêts courus non comptabilisés ou à mettre à jour.", "warn"); if (e.estim) L.push({ g: "Emprunts", lib: "Échéances à moins d'un an", ok: false, lvl: "warn", det: "Une partie des emprunts n'a pas de tableau d'amortissement : la part à moins d'un an est estimée d'après les remboursements de l'exercice." }); }
+    else if (b.get("P_ecr").val > 0 && e.estim) L.push({ g: "Emprunts", lib: "Échéances à moins d'un an", ok: false, lvl: "warn", det: "Aucun tableau d'amortissement : la part à moins d'un an est estimée d'après les remboursements de l'exercice. Saisissez vos emprunts (Comptabilité › Emprunts) pour un état des dettes exact." });
+    /* CAF */
+    { const d = (p, x) => sumPref(m, p, x || []), cr = (p, x) => -sumPref(m, p, x || []); const cs = c.sig.EBE + cr(["791", "796", "797"]) + cr(["75"]) - d(["65"]) + cr(["76"], ["786"]) - d(["66"], ["686"]) + cr(["77"], ["775", "777"]) - d(["67"], ["675"]) - d(["69"]);
+      add("Soldes et CAF", "CAF : méthode additive = méthode soustractive (à partir de l'EBE)", cafOf(ex.debut, ex.fin), cs, "Un compte de charge ou de produit est mal classé dans les soldes intermédiaires de gestion.", "warn"); }
+  };
+  try { if (typeof arrWith === "function" && typeof ARR !== "undefined" && ARR.on) { const o = ARR.on; ARR.on = 0; bumpV(); try { run(); } finally { ARR.on = o; bumpV(); } } else run(); } catch (e) { L.push({ g: "Contrôle", lib: "Contrôle interrompu", ok: false, lvl: "bad", det: String(e.message || e) }); }
+  return L; }
+
+/* ---------- écran, alertes, réglages ---------- */
+function ctlSum(L) { return { bad: L.filter(x => x.lvl === "bad").length, warn: L.filter(x => x.lvl === "warn").length, ok: L.filter(x => x.ok).length }; }
+function ctlBanner(ex) { if (!ctlCfg().on) return ""; let L; try { L = ctlRun(ex); } catch (e) { return ""; } const n = ctlSum(L); if (!n.bad && !n.warn) return `<div class="ctl-al ok"><b>✓ Contrôle des calculs</b><span>${n.ok} contrôles réussis : annexe, bilan et compte de résultat concordent.</span><button class="btn sm ghost" data-act="go" data-v="ctlCalc">Détail</button></div>`;
+  return `<div class="ctl-al ${n.bad ? "bad" : "warn"}"><b>${n.bad ? "⚠ " + n.bad + " anomalie" + (n.bad > 1 ? "s" : "") + " de calcul" : "Contrôle des calculs"}</b><span>${n.bad ? "Des montants de l'annexe ou des états ne concordent pas. " : ""}${n.warn ? n.warn + " point" + (n.warn > 1 ? "s" : "") + " à vérifier (registres, emprunts, affectation)." : ""}</span><button class="btn sm ${n.bad ? "pri" : ""}" data-act="go" data-v="ctlCalc">Voir le contrôle →</button></div>`; }
+(function () {
+  try { const C = NAV2.find(n => n[0] === "compta"); if (C && !C[2].includes("ctlCalc")) C[2].push("ctlCalc"); } catch (e) { }
+  const f = v => v == null ? "" : eur(v);
+  VIEWS.ctlCalc = () => { const ex = exCur(); const L = ctlRun(ex); const n = ctlSum(L); const G = [...new Set(L.map(x => x.g))];
+    return `<div class="topbar"><div><div class="eyebrow">Comptabilité › Clôture</div><h1>Contrôle des calculs</h1><p class="lead">Chaque montant de l'annexe et des états financiers est recalculé et rapproché du bilan, du compte de résultat, de l'exercice précédent et des registres (immobilisations, emprunts).</p></div>${typeof exSelect === "function" ? exSelect() : ""}</div>
+    <div class="ctl-k"><div class="${n.bad ? "bad" : "ok"}"><b>${n.bad}</b><span>anomalie${n.bad > 1 ? "s" : ""}</span></div><div class="${n.warn ? "warn" : "ok"}"><b>${n.warn}</b><span>point${n.warn > 1 ? "s" : ""} à vérifier</span></div><div class="ok"><b>${n.ok}</b><span>contrôle${n.ok > 1 ? "s" : ""} réussi${n.ok > 1 ? "s" : ""}</span></div><div class="row" style="gap:6px;align-items:center"><button class="btn" data-act="go" data-v="cloture">Clôture</button><button class="btn" data-act="go" data-v="compAnn">Comptes annuels</button></div></div>
+    ${G.map(g => `<section class="panel" style="margin-bottom:12px"><div class="panel-h"><h2>${esc(g)}</h2></div><div class="panel-b" style="padding:0"><table class="t ctl-t"><thead><tr><th style="width:28px"></th><th>Contrôle</th><th class="r">Calculé</th><th class="r">Attendu</th><th class="r">Écart</th></tr></thead><tbody>${L.filter(x => x.g === g).map(x => `<tr class="${x.lvl}"><td>${x.lvl === "ok" ? "✓" : x.lvl === "info" ? "ℹ" : x.lvl === "warn" ? "!" : "✕"}</td><td>${esc(x.lib)}${x.det ? `<div class="small muted">${esc(x.det)}</div>` : ""}</td><td class="r mono">${f(x.a)}</td><td class="r mono">${f(x.b)}</td><td class="r mono">${x.a != null && x.b != null && !x.ok ? eur((x.a || 0) - (x.b || 0)) : ""}</td></tr>`).join("")}</tbody></table></div></section>`).join("")}
+    <p class="small muted">Montants au centime (avant arrondi à l'euro des éditions). Les anomalies (✕) faussent les comptes annuels ; les points à vérifier (!) signalent un registre ou une écriture à compléter.</p>`; };
+  const put = (h, bn) => { if (!bn) return h; const k = h.indexOf('<div class="topbar">'); const j = k >= 0 ? h.indexOf("</div></div>", k) : -1; return j >= 0 ? h.slice(0, j + 12) + bn + h.slice(j + 12) : bn + h; };
+  ["cloture", "compAnn"].forEach(v => { const _v = VIEWS[v]; if (typeof _v !== "function") return; VIEWS[v] = function () { const h = _v.apply(this, arguments); if (!ctlCfg().ed) return h; try { return put(h, ctlBanner(exCur())); } catch (e) { return h; } }; });
+  CHG.ctlCfg = el => { S.ctlCfg = Object.assign(ctlCfg(), { [el.dataset.k]: el.value === "1" ? 1 : 0 }); if (typeof bumpV === "function") bumpV(); Store.touch(); toast("Réglage enregistré"); render(); };
+  const _p = VIEWS.params; if (typeof _p === "function") VIEWS.params = function () { const h = _p.apply(this, arguments); const c = ctlCfg(); const sel = (k, l, hint) => `<label class="f">${l}<select class="in" data-ch="ctlCfg" data-k="${k}"><option value="1" ${c[k] ? "selected" : ""}>Oui</option><option value="0" ${c[k] ? "" : "selected"}>Non</option></select>${hint ? `<small class="muted">${hint}</small>` : ""}</label>`;
+    const card = `<section class="panel" style="margin-bottom:14px"><div class="panel-h"><h2>🧾 Contrôle des calculs des comptes annuels</h2><span class="small muted">Clôture › Contrôle des calculs</span></div><div class="panel-b"><div class="grid g2">${sel("on", "Contrôle automatique des calculs", "Annexe, bilan, compte de résultat, registres et exercice précédent rapprochés à chaque affichage.")}${sel("ed", "Bandeau de contrôle sur Clôture et Comptes annuels")}${sel("virt", "Reprendre les soldes de l'exercice précédent tant que les à-nouveaux ne sont pas générés", "Jamais en plus des à-nouveaux : dès qu'ils existent, eux seuls sont utilisés.")}${sel("ran", "Présenter un résultat antérieur non affecté en report à nouveau", "Sinon il s'ajoute au résultat de l'exercice.")}</div></div></section>`;
+    const i = h.indexOf('<div class="grid g2">'); return i < 0 ? h + card : h.slice(0, i) + card + h.slice(i); };
+  const st = document.createElement("style"); st.textContent = `
+.ctl-al{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-radius:12px;padding:10px 14px;margin:0 0 14px;font-size:13.5px;border:1px solid}.ctl-al span{flex:1;min-width:220px}.ctl-al.ok{background:#EFF8F3;border-color:#CBE7D8;color:#1E5E3F}.ctl-al.bad{background:#FDF0EE;border-color:#F3C9C2;color:#7A2418}.ctl-al.warn{background:#FFF7E8;border-color:#F2DDB0;color:#6B4A0B}
+.ctl-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}.ctl-k>div{border:1px solid var(--rule,#E3EBEA);border-radius:12px;padding:10px 14px;background:#fff;display:flex;flex-direction:column}.ctl-k b{font-size:24px}.ctl-k .bad b{color:#B42318}.ctl-k .warn b{color:#9A5B00}.ctl-k .ok b{color:#1E7A4F}
+.ctl-t td:first-child{font-weight:800;text-align:center}.ctl-t tr.ok td:first-child{color:#1E7A4F}.ctl-t tr.bad td:first-child{color:#B42318}.ctl-t tr.bad{background:#FFF8F6}.ctl-t tr.warn td:first-child{color:#9A5B00}.ctl-t tr.info td:first-child{color:#2C5AA0}`; document.head.appendChild(st);
+})();

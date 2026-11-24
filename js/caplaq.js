@@ -23,9 +23,14 @@ function cqSt() { const Q = S.caplq ||= {}; Q.off ||= { annexe: 1 }; Q.titles ||
 const cqT = k => { const Q = cqSt(); return Q.titles[k] || (CQ_SECT.find(x => x[0] === k) || [])[1] || k; };
 const cqX = k => { const Q = cqSt(); return Q.texts[k] != null ? Q.texts[k] : CQ_TXT[k] || ""; };
 const cqPct = (a, b) => b ? pdfClean(((a - b) / Math.abs(b) * 100).toFixed(1).replace(".", ",")) + " %" : "";
-function cqMv(ex, re, sens) { /* début, augmentations, diminutions, fin d'un groupe de comptes */ const o = [0, 0, 0];
-  for (const { e, l } of flat({ to: ex.fin })) { if (!re.test(l.compte)) continue; const s = sens * (l.debit - l.credit); if (e.date < ex.debut || e.journal === "AN") o[0] += s; else if (s > 0) o[1] += s; else o[2] -= s; }
-  return o.concat([o[0] + o[1] - o[2]]); }
+function cqMv(ex, re, sens) { /* début, augmentations, diminutions, fin d'un groupe de comptes.
+  Début = à-nouveaux de l'exercice s'ils existent, sinon soldes des exercices antérieurs (jamais les deux : pas de double comptage).
+  Fin = solde du bilan ; avec l'arrondi à l'euro, chaque compte est arrondi comme au bilan. */
+  const an = E.some(e => e.journal === "AN" && e.date >= ex.debut && e.date <= ex.fin); const A = {};
+  for (const { e, l } of flat(an ? { from: ex.debut, to: ex.fin } : { to: ex.fin })) { if (!re.test(l.compte)) continue; const o = A[l.compte] ||= [0, 0, 0]; const s = sens * ((l.debit || 0) - (l.credit || 0)); if (e.journal === "AN" || e.date < ex.debut) o[0] += s; else if (s > 0) o[1] += s; else o[2] -= s; }
+  const rd = typeof ARR !== "undefined" && ARR.on; const t = [0, 0, 0, 0];
+  for (const c in A) { let [d, a, m] = A[c]; let f = d + a - m; if (rd) { d = Math.round(d / 100) * 100; f = Math.round(f / 100) * 100; a = Math.round(a / 100) * 100; m = d + a - f; if (m < 0) { a -= m; m = 0; } } t[0] += d; t[1] += a; t[2] += m; t[3] += f; }
+  return t; }
 function cqAccts(m, re, sign) { return Object.keys(m).filter(c => re.test(c) && m[c]).sort().map(c => [c, typeof accLib === "function" ? accLib(c) : c, sign * m[c]]); }
 const CQ_COLS4 = [{ wrap: 1 }, { w: 80, align: "right" }, { w: 80, align: "right" }, { w: 80, align: "right" }, { w: 80, align: "right" }];
 const CQ_F = {
@@ -42,13 +47,13 @@ const CQ_F = {
     P.rect(M0 + 150, R.y + 2, 10, 6, col); P.text(M0 + 164, R.y + 8, "Exercice N", { size: 7.5 }); P.rect(M0 + 230, R.y + 2, 10, 6, PC.rule); P.text(M0 + 244, R.y + 8, "Exercice N-1", { size: 7.5 }); R.y += 20; },
   sig: (R, ex) => pdfSIG(R, ex), bilan: (R, ex) => (ETATS_PDF.find(x => x[0] === "bilan") || [, , pdfBilan])[2](R, ex), cr: (R, ex) => (ETATS_PDF.find(x => x[0] === "cr") || [, , pdfCR])[2](R, ex),
   annexe: (R, ex) => (ETATS_PDF.find(x => x[0] === "annexe") || [, , pdfAnnexe])[2](R, ex),
-  immo: (R, ex) => { const G = [["Frais d'établissement, de développement", /^20[13]/], ["Concessions, brevets, logiciels, fonds commercial", /^20[5-8]/], ["Terrains", /^211/], ["Constructions", /^21[34]/], ["Installations techniques, matériel et outillage", /^215/], ["Autres immobilisations corporelles", /^218/], ["Immobilisations en cours, avances et acomptes", /^23/], ["Participations et créances rattachées", /^26/], ["Autres immobilisations financières", /^27/]].map(([l, re]) => [l, cqMv(ex, re, 1)]).filter(x => x[1].some(v => v));
+  immo: (R, ex) => { const G = IMMO_GRP.map(([l, k]) => [l, bilRe(k, /^2[0-7]/)]).map(([l, re]) => [l, cqMv(ex, re, 1)]).filter(x => x[1].some(v => v));
     R.newPage("État des immobilisations", "Exercice clos le " + frDate(ex.fin)); const t = [0, 1, 2, 3].map(i => G.reduce((a, g) => a + g[1][i], 0));
     R.table(CQ_COLS4, G.map(([l, v]) => [l, pe(v[0]), pe(v[1]), pe(v[2]), pe(v[3])]).concat([{ style: "tot", cells: ["Total", ...t.map(v => pe(v))] }]), ["Rubriques", "Valeur brute début", "Augmentations", "Diminutions", "Valeur brute fin"]); },
-  amort: (R, ex) => { const G = [["Immobilisations incorporelles", /^280/], ["Constructions", /^281[34]/], ["Installations techniques, matériel", /^2815/], ["Autres immobilisations corporelles", /^2818/]].map(([l, re]) => [l, cqMv(ex, re, -1)]).filter(x => x[1].some(v => v));
+  amort: (R, ex) => { const G = AMORT_GRP.map(([l, k]) => [l, bilRe(k, /^28/)]).map(([l, re]) => [l, cqMv(ex, re, -1)]).filter(x => x[1].some(v => v));
     R.newPage("État des amortissements", "Exercice clos le " + frDate(ex.fin)); const t = [0, 1, 2, 3].map(i => G.reduce((a, g) => a + g[1][i], 0));
     R.table(CQ_COLS4, G.map(([l, v]) => [l, pe(v[0]), pe(v[1]), pe(v[2]), pe(v[3])]).concat([{ style: "tot", cells: ["Total", ...t.map(v => pe(v))] }]), ["Rubriques", "Amortissements début", "Dotations", "Reprises", "Amortissements fin"]);
-    if ((S.immos || []).length) R.table([{ wrap: 1 }, { w: 64 }, { w: 70, align: "right" }, { w: 70, align: "right" }, { w: 76, align: "right" }], S.immos.map(im => { const p = planAmort(im); const cum = p.filter(r => r.fin <= ex.fin).reduce((a, r) => a + r.dot, 0); return [im.lib, (im.mode === "D" ? "Dégr. " : "Lin. ") + String(im.duree).replace(".", ",") + " ans", pe(im.valeur), pe(cum), pe(im.valeur - cum)]; }), ["Détail des biens", "Mode et durée", "Valeur", "Amort. cumulés", "VNC"]); },
+    { const D = immoDet(ex); if (D.length) R.table([{ wrap: 1 }, { w: 70 }, { w: 60, align: "right" }, { w: 56, align: "right" }, { w: 52, align: "right" }, { w: 56, align: "right" }, { w: 58, align: "right" }], D.map(d => [d.im.lib + (d.cede ? " (cédé)" : ""), d.mode, pe(d.vo), pe(d.deb), pe(d.dot), pe(d.fin), pe(d.vnc)]), IMMO_DET_HEAD); } },
   prov: (R, ex) => { const G = [["Provisions réglementées", /^14/], ["Provisions pour risques", /^151/], ["Provisions pour charges", /^15[2-8]/]].map(([l, re]) => [l, cqMv(ex, re, -1)]).filter(x => x[1].some(v => v)); R.newPage("État des provisions", "Exercice clos le " + frDate(ex.fin));
     if (!G.length) return R.para("Aucune provision n'est inscrite au bilan."); R.table(CQ_COLS4, G.map(([l, v]) => [l, pe(v[0]), pe(v[1]), pe(v[2]), pe(v[3])]), ["Nature", "Début d'exercice", "Dotations", "Reprises", "Fin d'exercice"]); },
   deprec: (R, ex) => { const G = [["Sur immobilisations", /^29/], ["Sur stocks et en-cours", /^39/], ["Sur comptes clients", /^491/], ["Autres dépréciations", /^49[^1]|^59/]].map(([l, re]) => [l, cqMv(ex, re, -1)]).filter(x => x[1].some(v => v)); R.newPage("État des dépréciations", "Exercice clos le " + frDate(ex.fin));

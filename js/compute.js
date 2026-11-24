@@ -81,7 +81,7 @@ const BIL_RULES = [
   ["401", "A_acre|P_fou"], ["403", "A_acre|P_fou"], ["408", "A_acre|P_fou"], ["404", "A_acre|P_dimm"], ["405", "A_acre|P_dimm"],
   ["42", "A_acre|P_fisc"], ["43", "A_acre|P_fisc"], ["44", "A_acre|P_fisc"], ["455", "A_acre|P_edv"], ["486", "A_cca"], ["487", "P_pca"], ["4", "A_acre|P_adet"],
   ["59", "am:A_vmp"], ["50", "A_vmp"], ["5", "A_disp|P_ecr"],
-  ["164", "P_ecr"], ["16", "P_edv"], ["15", "P_prov"], ["14", "P_preg"], ["13", "P_subv"], ["12", "P_res"], ["11", "P_ran"],
+  ["164", "P_ecr"], ["1688", "P_ecr"], ["16", "P_edv"], ["15", "P_prov"], ["14", "P_preg"], ["13", "P_subv"], ["12", "P_res"], ["11", "P_ran"],
   ["1061", "P_rl"], ["1063", "P_rst"], ["1062", "P_rreg"], ["1064", "P_rreg"], ["106", "P_raut"], ["105", "P_ecre"], ["104", "P_prim"], ["1", "P_cap"]
 ];
 const ACTIF = [
@@ -110,9 +110,12 @@ function bilan(ex) {
     if (key[0] === "A") o.brut += v; else o.val += -v;
   }
   g("P_res").val += res67;
+  /* résultat d'un exercice antérieur encore au compte 12 (affectation non comptabilisée) : il n'est pas le résultat
+     de l'exercice ; il est présenté en report à nouveau (contrôle « affectation du résultat » dans Contrôle des calculs) */
+  let unalloc = 0; if (res67 && !(S.ctlCfg && S.ctlCfg.ran === 0)) { for (const c in m) if (c.startsWith("12")) unalloc += -m[c]; if (unalloc) { g("P_res").val -= unalloc; g("P_ran").val += unalloc; } }
   for (const k in B) if (k[0] === "A") B[k].val = B[k].brut - B[k].am;
   const tot = (sections) => sections.reduce((s, sec) => s + sec[1].reduce((a, [k]) => a + (B[k] ? B[k].val : 0), 0), 0);
-  return { B, res: res67, totA: tot(ACTIF), totP: tot(PASSIF), get: k => B[k] || { brut: 0, am: 0, val: 0, comptes: [] } };
+  return { B, res: res67, unalloc, totA: tot(ACTIF), totP: tot(PASSIF), get: k => B[k] || { brut: 0, am: 0, val: 0, comptes: [] } };
 }
 const CR_RULES = [
   ["649", "C_soc"], ["756", "P_coti"], ["754", "P_gen"], ["789", "P_ufd"], ["689", "C_rfd"], ["657", "C_ach"], ["757", "P_apr"],
@@ -269,6 +272,17 @@ function planAmort(im) {
   }
   return rows;
 }
+/* détail par bien pour un exercice : biens en service à la clôture ou cédés pendant l'exercice */
+function immoDet(ex) { return (S.immos || []).filter(im => im.dateMES && im.dateMES <= ex.fin && !(im.cession && im.cession < ex.debut)).map(im => { const p = planAmort(im);
+  const deb = p.filter(r => r.fin < ex.debut).reduce((a, r) => a + r.dot, 0); const dot = p.filter(r => r.fin >= ex.debut && r.debut <= ex.fin).reduce((a, r) => a + r.dot, 0);
+  const fin = deb + dot; return { im, vo: im.valeur || 0, deb, dot, fin, vnc: (im.valeur || 0) - fin, cede: !!(im.cession && im.cession <= ex.fin), mode: (im.mode === "D" ? "Dégressif " : "Linéaire ") + String(im.duree).replace(".", ",") + " an" + (im.duree > 1 ? "s" : "") }; }); }
+/* groupe de comptes défini par les postes du bilan (mêmes comptes que le bilan : les totaux de l'annexe égalent le bilan) */
+const bilRe = (keys, pre) => ({ test: c => (!pre || pre.test(c)) && keys.includes(String(ruleFor(BIL_RULES, c) || "").replace("am:", "")) });
+const IMMO_GRP = [["Frais d'établissement et de développement", ["A_fe"]], ["Concessions, brevets, logiciels", ["A_conc"]], ["Fonds commercial", ["A_fc"]], ["Autres immobilisations incorporelles", ["A_ainc"]], ["Terrains", ["A_terr"]], ["Constructions", ["A_cons"]], ["Installations techniques, matériel et outillage", ["A_mat"]], ["Autres immobilisations corporelles", ["A_acor"]], ["Immobilisations en cours, avances et acomptes", ["A_enc"]], ["Participations et créances rattachées", ["A_part"]], ["Autres immobilisations financières", ["A_afin"]]];
+const AMORT_GRP = [["Immobilisations incorporelles", ["A_fe", "A_conc", "A_fc", "A_ainc"]], ["Terrains (agencements)", ["A_terr"]], ["Constructions", ["A_cons"]], ["Installations techniques, matériel et outillage", ["A_mat"]], ["Autres immobilisations corporelles", ["A_acor", "A_enc"]]];
+/* capacité d'autofinancement, méthode additive du PCG (transferts de charges exclus) */
+function cafOf(from, to) { const m = soldeMap(from, to); const d = p => sumPref(m, p); return -d(["6", "7"]) + d(["681", "686", "687"]) + d(["781", "786", "787"]) + d(["675"]) + d(["775"]) + d(["777"]); }
+const IMMO_DET_HEAD = ["Bien", "Mode et durée", "Valeur d'origine", "Amort. début", "Dotation", "Amort. fin", "Valeur nette"];
 const compteAmort = c => "28" + c.slice(1, 5);
 const compteDot = c => c.startsWith("20") ? "681110" : "681120";
 function genererDotations(ex) {

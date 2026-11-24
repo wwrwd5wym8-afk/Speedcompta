@@ -511,7 +511,7 @@ function pubBuild(p, fmt) { const m = pubModel(p.modele); const d = Object.assig
   const sitCtx = { kind: p.kind, au: X.fin };
   const serO = typeof cq2Series === "function" ? cq2Series : null;
   try { S.cq2 = Q; prevEx = e => e === X ? CMP : (e === CMP ? null : sav.prevEx(e));
-    if (serO) cq2Series = e => { if (e !== X) return serO(e); const one = E => { const c = compteResultat(E.debut, E.fin); return { y: E.fin.slice(0, 4), ca: c.CA, va: c.sig.VA, ebe: c.sig.EBE, rn: c.RN, caf: c.RN + c.v("C_dam") + c.v("C_dpr") - c.v("P_rep") }; }; const L = serO(CMP || X).filter(x => !CMP || x.y < CMP.fin.slice(0, 4)).slice(-3); if (CMP) L.push(one(CMP)); L.push(one(X)); return L; };
+    if (serO) cq2Series = e => { if (e !== X) return serO(e); const one = E => { const c = compteResultat(E.debut, E.fin); return { y: E.fin.slice(0, 4), ca: c.CA, va: c.sig.VA, ebe: c.sig.EBE, rn: c.RN, caf: cafOf(E.debut, E.fin) }; }; const L = serO(CMP || X).filter(x => !CMP || x.y < CMP.fin.slice(0, 4)).slice(-3); if (CMP) L.push(one(CMP)); L.push(one(X)); return L; };
     cq2N = c => DET.test(PUB.cur) ? fD(c) : fN(c);
     Object.keys(CQ2_F).forEach(k => { const f = CQ2_F[k]; sav.F[k] = f; CQ2_F[k] = ctx => { PUB.cur = k; return f(ctx); }; });
     Report.prototype.table = pubTableX(sav.tab, d, labs, p); if (sav.cq2Tab) cq2Tab = pubTableX(sav.cq2Tab, d, labs, p);

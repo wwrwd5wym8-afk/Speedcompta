@@ -14,7 +14,7 @@ function cdAgg(ex) { if (!ex) return null; const m = soldeMap(ex.debut, ex.fin);
   const nbJ = Math.max(1, Math.round((new Date(ex.fin) - new Date(ex.debut)) / 864e5) + 1); const ann = x => x * 365 / nbJ;
   let bil = 0; try { bil = bilan(ex).totA; } catch (e) { }
   const cp = -sp(["10", "11", "12", "13", "14"]) + cr.RN; const capital = -sp(["101", "108"]); const treso = sp(["50", "51", "53", "54"]); const clients = sp(["411", "413", "416", "418"]); const fourn = -sp(["401", "403", "408"]);
-  const bfr = sp(["3", "40", "41", "42", "43", "44", "46", "47", "48"]); const dfin = -sp(["16", "17"]); const dot = sp(["68"]), rep = -sp(["78"]); const caf = cr.RN + dot - rep;
+  const bfr = sp(["3", "40", "41", "42", "43", "44", "46", "47", "48"]); const dfin = -sp(["16", "17"]); const dot = sp(["68"]), rep = -sp(["78"]); const caf = typeof cafOf === "function" ? cafOf(ex.debut, ex.fin) : cr.RN + dot - rep;
   const achats = sp(["60", "61", "62"]); const pers = sp(["64"]); const eff = ((S.paie && S.paie.sal) || []).filter(s => !s.sortie && !s.dateSortie).length;
   return { ex, CA: cr.CA, vente, serv, marge: cr.sig.marge, VA: cr.sig.VA, EBE: cr.sig.EBE, RE: cr.RE, RN: cr.RN, cp, capital, treso, clients, fourn, bfr, dfin, caf, achats, pers, eff, bil, tvaColl, tvaDed, tvaDue: tvaColl - tvaDed, mon, nbJ,
     dso: cr.CA ? Math.round(clients / (ann(cr.CA) * 1.2) * 365) : 0, dpo: achats ? Math.round(fourn / (ann(achats) * 1.2) * 365) : 0, caAnn: ann(cr.CA), venteAnn: ann(vente), servAnn: ann(serv) }; }

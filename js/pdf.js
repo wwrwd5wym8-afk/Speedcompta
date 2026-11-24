@@ -142,13 +142,9 @@ function pdfSIG(R, ex) {
   R.newPage("Soldes intermédiaires de gestion", "Du " + frDate(ex.debut) + " au " + frDate(ex.fin));
   R.table([{ wrap: 1 }, { w: 110, align: "right" }, { w: 70, align: "right" }], L, ["Soldes", "Montant", "% du CA"]);
 }
-function immoMvts(ex) { // mouvements des comptes 20-27 et 28-29
-  const G = { inc: [0, 0, 0], cor: [0, 0, 0], fin: [0, 0, 0], ainc: [0, 0, 0], acor: [0, 0, 0] };
-  const cat = c => /^20/.test(c) ? "inc" : /^2[13]/.test(c) ? "cor" : /^2[67]/.test(c) ? "fin" : /^280|^290/.test(c) ? "ainc" : /^28|^29/.test(c) ? "acor" : null;
-  for (const { e, l } of flat({ to: ex.fin })) { const k = cat(l.compte); if (!k) continue; const am = k[0] === "a"; const s = am ? l.credit - l.debit : l.debit - l.credit;
-    if (e.date < ex.debut || e.journal === "AN") G[k][0] += s; else if (am ? l.credit : l.debit) G[k][1] += am ? l.credit : l.debit; else G[k][2] += am ? l.debit : l.credit; }
-  return G;
-}
+function immoMvts(ex) { /* mouvements des comptes 20-27 et 28-29 : début (à-nouveaux), augmentations, diminutions — via cqMv (pas de double comptage) */
+  const t = (re, sg) => cqMv(ex, re, sg).slice(0, 3);
+  return { inc: t(/^20/, 1), cor: t(/^2[1-5]/, 1), fin: t(/^2[67]/, 1), ainc: t(/^280|^290/, -1), acor: t(/^28[1-9]|^29[1-9]/, -1) }; }
 function pdfAnnexe(R, ex) {
   R.newPage("Annexe", "Exercice du " + frDate(ex.debut) + " au " + frDate(ex.fin) + " (" + monthsBetween(ex.debut, ex.fin) + " mois)");
   const b = bilan(ex); const c = compteResultat(ex.debut, ex.fin);
@@ -162,7 +158,7 @@ function pdfAnnexe(R, ex) {
   R.table([{ wrap: 1 }, { w: 82, align: "right" }, { w: 76, align: "right" }, { w: 76, align: "right" }, { w: 82, align: "right" }], [["Incorporelles", G.inc], ["Corporelles", G.cor], ["Financières", G.fin]].map(([l, g]) => [l, pe(g[0]), pe(g[1]), pe(g[2]), pe(g[0] + g[1] - g[2])]).concat([{ style: "tot", cells: ["Total", pe(G.inc[0] + G.cor[0] + G.fin[0]), pe(G.inc[1] + G.cor[1] + G.fin[1]), pe(G.inc[2] + G.cor[2] + G.fin[2]), pe(G.inc[0] + G.cor[0] + G.fin[0] + G.inc[1] + G.cor[1] + G.fin[1] - G.inc[2] - G.cor[2] - G.fin[2])] }]), ["Valeurs brutes", "Début", "Augmentations", "Diminutions", "Fin"]);
   R.h2("4. Amortissements");
   R.table([{ wrap: 1 }, { w: 82, align: "right" }, { w: 76, align: "right" }, { w: 76, align: "right" }, { w: 82, align: "right" }], [["Immobilisations incorporelles", G.ainc], ["Immobilisations corporelles", G.acor]].map(([l, g]) => [l, pe(g[0]), pe(g[1]), pe(g[2]), pe(g[0] + g[1] - g[2])]), ["Amortissements", "Début", "Dotations", "Reprises", "Fin"]);
-  if (S.immos.length) R.table([{ wrap: 1 }, { w: 64 }, { w: 70, align: "right" }, { w: 70, align: "right" }, { w: 76, align: "right" }], S.immos.map(im => { const p = planAmort(im); const cum = p.filter(r => r.fin <= ex.fin).reduce((a, r) => a + r.dot, 0); return [im.lib, (im.mode === "D" ? "Dégr. " : "Lin. ") + String(im.duree).replace(".", ",") + " ans", pe(im.valeur), pe(cum), pe(im.valeur - cum)]; }), ["Détail des biens", "Mode", "Valeur", "Amort. cumulés", "VNC"]);
+  { const D = immoDet(ex); if (D.length) R.table([{ wrap: 1 }, { w: 70 }, { w: 60, align: "right" }, { w: 56, align: "right" }, { w: 52, align: "right" }, { w: 56, align: "right" }, { w: 58, align: "right" }], D.map(d => [d.im.lib + (d.cede ? " (cédé)" : ""), d.mode, pe(d.vo), pe(d.deb), pe(d.dot), pe(d.fin), pe(d.vnc)]), IMMO_DET_HEAD); }
   R.h2("5. État des créances et des dettes");
   const ech = echeances(ex);
   R.table([{ wrap: 1 }, { w: 90, align: "right" }, { w: 90, align: "right" }, { w: 90, align: "right" }], ech.cre.map(r => [r[0], pe(r[1]), pe(r[1]), ""]).concat(ech.det.map(r => [r[0], pe(r[1] + r[2]), pe(r[1]), pe(r[2], 1)])), ["Créances et dettes", "Montant brut", "À 1 an au plus", "À plus d'1 an"]);
@@ -173,13 +169,18 @@ function pdfAnnexe(R, ex) {
   R.para("Engagements financiers donnés et reçus : néant à la connaissance de la direction (à compléter le cas échéant : cautions, crédit-bail, engagements de retraite). Effectif moyen de l'exercice : " + (S.effectif || "à compléter") + ".");
 }
 function echeances(ex) {
-  const m = soldeMap(ex.debut, ex.fin); const pos = p => sumPrefSign(m, p, 1); const neg = p => -sumPrefSign(m, p, -1);
-  let rem = 0, n = 0; for (const { e, l } of flat({ from: addMonths(ex.fin, -3), to: ex.fin, noAN: true })) if (l.compte.startsWith("164") && l.debit) { rem += l.debit; n++; }
-  const emp = neg(["164"]); const court = Math.min(emp, Math.round(rem * 4));
-  return {
-    cre: [["Créances clients et comptes rattachés", pos(["411", "413", "416", "418"])], ["Autres créances (État, personnel, débiteurs divers)", pos(["409", "42", "43", "44", "45", "46", "47"])], ["Charges constatées d'avance", pos(["486"])]].filter(r => r[1]),
-    det: [["Emprunts auprès des établissements de crédit", court, emp - court], ["Dettes fournisseurs et comptes rattachés", neg(["401", "403", "408", "404"]), 0], ["Dettes fiscales et sociales", neg(["42", "43", "44"]), 0], ["Groupe et associés", neg(["455"]), 0], ["Autres dettes", neg(["419", "46", "47"]), 0], ["Produits constatés d'avance", neg(["487"]), 0]].filter(r => r[1] || r[2])
-  };
+  /* état des créances et des dettes : mêmes montants que le bilan (postes du bilan), échéances tirées des tableaux d'emprunt */
+  const b = bilan(ex), m = soldeMap(ex.debut, ex.fin); const v = k => b.get(k).val, br = k => b.get(k).brut;
+  const pEcr = v("P_ecr"), b164 = Math.max(0, -sumPref(m, ["164"], ["1648"])); let c1 = 0, c5 = 0, reg = 0, nReg = 0;
+  (typeof emprunts === "function" ? emprunts() : []).filter(p => String(p.compte || "").startsWith("164") && p.debut && p.debut <= ex.fin).forEach(p => { const x = empExo(p, ex); reg += x.crdFin; c1 += x.moins1; nReg++; const l5 = addMonths(ex.fin, 60); c5 += x.pl.filter(r => r.date > l5).reduce((a, r) => a + r.cap, 0); });
+  let estim = false; const rest = b164 - reg;
+  if (Math.abs(rest) > 100) { estim = true; if (rest > 0) { let r12 = 0, r3 = 0; const d3 = addMonths(ex.fin, -3); for (const { e, l } of flat({ from: ex.debut, to: ex.fin, noAN: true })) if (l.compte.startsWith("164") && !l.compte.startsWith("1648") && l.debit && !String(e.tag || "").startsWith("EMP:")) { r12 += l.debit; if (e.date > d3) r3 += l.debit; } c1 += Math.min(rest, Math.max(r12, r3 * 4)); } }
+  c1 = Math.max(0, Math.min(c1, b164)); c5 = Math.max(0, Math.min(c5, b164 - c1));
+  const ecr1 = c1 + Math.max(0, pEcr - b164); /* intérêts courus et concours bancaires : à moins d'un an */
+  const cca = Math.min(v("P_edv"), Math.max(0, -sumPrefSign(m, ["455"], -1)));
+  const det = [["Emprunts et dettes auprès des établissements de crédit", ecr1, pEcr - ecr1, c5], ["Emprunts et dettes financières divers", 0, v("P_edv") - cca, 0], ["Groupe et associés (comptes courants)", cca, 0, 0], ["Avances et acomptes reçus sur commandes", v("P_avr"), 0, 0], ["Dettes fournisseurs et comptes rattachés", v("P_fou"), 0, 0], ["Dettes fiscales et sociales", v("P_fisc"), 0, 0], ["Dettes sur immobilisations et comptes rattachés", v("P_dimm"), 0, 0], ["Autres dettes", v("P_adet"), 0, 0], ["Produits constatés d'avance", v("P_pca"), 0, 0]].filter(r => r[1] || r[2]);
+  const cre = [["Avances et acomptes versés sur commandes", br("A_avv")], ["Créances clients et comptes rattachés", br("A_cli")], ["Autres créances (État, personnel, débiteurs divers)", br("A_acre")], ["Charges constatées d'avance", br("A_cca")]].filter(r => r[1]);
+  return { cre, det, estim, reg, b164, nReg };
 }
 function pdfCover(R, ex, title, list) {
   R.started = true; const p = R.pdf, M = R.M;
